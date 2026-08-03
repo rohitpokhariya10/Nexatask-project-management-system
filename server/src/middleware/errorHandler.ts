@@ -10,8 +10,32 @@ interface MongoDuplicateError extends Error {
   keyPattern?: Record<string, number>;
 }
 
+interface RequestBodyError extends Error {
+  status?: number;
+  statusCode?: number;
+  type?: string;
+}
+
 function normalizeError(error: unknown): AppError {
   if (error instanceof AppError) return error;
+
+  if (error instanceof Error) {
+    const bodyError = error as RequestBodyError;
+    if (
+      bodyError.type === 'entity.too.large' ||
+      bodyError.status === 413 ||
+      bodyError.statusCode === 413
+    ) {
+      return new AppError('Request body exceeds the allowed size.', 413, [
+        { path: 'body', message: 'Request body exceeds the allowed size.' },
+      ]);
+    }
+    if (bodyError.type === 'entity.parse.failed') {
+      return new AppError('Malformed JSON request body.', 400, [
+        { path: 'body', message: 'Enter valid JSON.' },
+      ]);
+    }
+  }
 
   if (error instanceof ZodError) {
     const errors: ErrorDetail[] = error.issues.map((issue) => ({

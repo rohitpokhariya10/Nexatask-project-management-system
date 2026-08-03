@@ -141,6 +141,33 @@ export async function createProject(request: Request, response: Response): Promi
     },
     request,
   });
+  await recordAudit({
+    actorId: request.user.objectId,
+    action: 'PROJECT_MANAGER_ASSIGNED',
+    entityType: 'Project',
+    entityId: project._id,
+    summary: `Project Manager assigned to “${project.name}”.`,
+    metadata: {
+      previousManagerId: null,
+      managerId: String(manager._id),
+      source: 'project-creation',
+    },
+    request,
+  });
+  if (members.length > 0) {
+    await recordAudit({
+      actorId: request.user.objectId,
+      action: 'PROJECT_MEMBERS_ADDED',
+      entityType: 'Project',
+      entityId: project._id,
+      summary: `${members.length} member${members.length === 1 ? '' : 's'} added to “${project.name}”.`,
+      metadata: {
+        memberIds: members.map(String),
+        source: 'project-creation',
+      },
+      request,
+    });
+  }
   sendSuccess(
     response,
     { project: await projectWithPeople(project) },

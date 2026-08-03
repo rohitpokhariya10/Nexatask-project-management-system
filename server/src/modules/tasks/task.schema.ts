@@ -16,12 +16,16 @@ export const createTaskSchema = z.object({
   dueDate: dateSchema,
 });
 
-export const updateTaskSchema = z.object({
-  title: z.string().trim().min(1, 'Title is required.').max(200).optional(),
-  description: z.string().trim().max(5000).optional(),
-  priority: z.enum(TASK_PRIORITIES).optional(),
-  dueDate: dateSchema.optional(),
-});
+export const updateTaskSchema = z
+  .object({
+    title: z.string().trim().min(1, 'Title is required.').max(200).optional(),
+    description: z.string().trim().max(5000).optional(),
+    priority: z.enum(TASK_PRIORITIES).optional(),
+    dueDate: dateSchema.optional(),
+  })
+  .refine((value) => Object.keys(value).length > 0, {
+    message: 'Provide at least one task field to update.',
+  });
 
 export const updateTaskStatusSchema = z.object({ status: z.enum(TASK_STATUSES) });
 export const updateTaskAssigneeSchema = z.object({ assigneeId: objectIdSchema.nullable() });

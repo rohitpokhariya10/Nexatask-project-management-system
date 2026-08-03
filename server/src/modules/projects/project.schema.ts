@@ -30,6 +30,9 @@ export const updateProjectSchema = z
     startDate: dateSchema.optional(),
     deadline: dateSchema.optional(),
   })
+  .refine((value) => Object.keys(value).length > 0, {
+    message: 'Provide at least one project field to update.',
+  })
   .refine((value) => !value.startDate || !value.deadline || value.deadline >= value.startDate, {
     path: ['deadline'],
     message: 'Project deadline must be on or after the start date.',

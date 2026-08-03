@@ -5,7 +5,12 @@ import { AppError } from '../../shared/appError.js';
 import { requireTaskAccess } from '../../shared/access.js';
 import { recordAudit } from '../audit/audit.service.js';
 import { AttachmentModel } from './attachment.model.js';
-import { deleteStoredFile, safeOriginalName, storedFilePath } from './storage.service.js';
+import {
+  deleteStoredFile,
+  safeOriginalName,
+  storedFilePath,
+  validateStoredUpload,
+} from './storage.service.js';
 
 export async function ensureAttachmentTaskAccess(
   request: Request,
@@ -24,6 +29,7 @@ export async function uploadAttachment(request: Request, response: Response): Pr
       { path: 'file', message: 'A file is required.' },
     ]);
   try {
+    await validateStoredUpload(request.file);
     const attachment = new AttachmentModel({
       taskId: request.params.taskId,
       uploadedBy: request.user.objectId,

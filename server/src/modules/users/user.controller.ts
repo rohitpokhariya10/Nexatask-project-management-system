@@ -1,6 +1,7 @@
 import type { FilterQuery } from 'mongoose';
 import type { Request, Response } from 'express';
 import { ProjectModel } from '../projects/project.model.js';
+import { TaskModel } from '../tasks/task.model.js';
 import { recordAudit } from '../audit/audit.service.js';
 import { pagination, sendSuccess } from '../../shared/apiResponse.js';
 import { AppError } from '../../shared/appError.js';
@@ -53,7 +54,7 @@ export async function updateUserRole(request: Request, response: Response): Prom
     sendSuccess(response, { user: target }, { message: 'User role is unchanged.' });
     return;
   }
-  if (target.role === 'PROJECT_MANAGER' && nextRole === 'TEAM_MEMBER') {
+  if (nextRole === 'TEAM_MEMBER') {
     const managesProject = await ProjectModel.exists({ managerId: target._id });
     if (managesProject)
       throw new AppError('Reassign this user’s managed projects before changing their role.', 409);
@@ -87,10 +88,30 @@ export async function updateUserStatus(request: Request, response: Response): Pr
   }
   const target = await UserModel.findById(request.params.userId);
   if (!target) throw new AppError('User not found.', 404);
-  if (!body.isActive && (target.role === 'PROJECT_MANAGER' || target.role === 'ADMIN')) {
-    const managesProject = await ProjectModel.exists({ managerId: target._id });
+  if (target.isActive === body.isActive) {
+    sendSuccess(
+      response,
+      { user: target },
+      {
+        message: `User is already ${body.isActive ? 'active' : 'inactive'}.`,
+      },
+    );
+    return;
+  }
+  if (!body.isActive) {
+    const [managesProject, belongsToProject, hasAssignedTask] = await Promise.all([
+      ProjectModel.exists({ managerId: target._id }),
+      ProjectModel.exists({ memberIds: target._id }),
+      TaskModel.exists({ assigneeId: target._id }),
+    ]);
     if (managesProject)
       throw new AppError('Reassign this user’s managed projects before deactivating them.', 409);
+    if (belongsToProject || hasAssignedTask) {
+      throw new AppError(
+        'Remove this user from all projects and reassign their tasks before deactivating them.',
+        409,
+      );
+    }
   }
   target.isActive = body.isActive;
   await target.save();

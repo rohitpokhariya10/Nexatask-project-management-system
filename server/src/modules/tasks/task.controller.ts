@@ -109,6 +109,21 @@ export async function createTask(request: Request, response: Response): Promise<
     metadata: { projectId: String(project._id), assigneeId: input.assigneeId ?? null },
     request,
   });
+  if (input.assigneeId) {
+    await recordAudit({
+      actorId: request.user.objectId,
+      action: 'TASK_ASSIGNED',
+      entityType: 'Task',
+      entityId: task._id,
+      summary: `Task “${task.title}” assigned.`,
+      metadata: {
+        previousAssigneeId: null,
+        assigneeId: input.assigneeId,
+        source: 'task-creation',
+      },
+      request,
+    });
+  }
   sendSuccess(response, { task }, { statusCode: 201, message: 'Task created.' });
 }
 
