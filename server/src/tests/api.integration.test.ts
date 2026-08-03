@@ -543,6 +543,53 @@ describe('dashboard and persistent audit behavior', () => {
     });
   });
 
+  it('allow-lists audit filters and rejects a reversed date range', async () => {
+    const admin = await createUser('admin@example.com', 'ADMIN');
+
+    const valid = await request(app)
+      .get('/api/audit-logs')
+      .query({
+        action: 'USER_LOGIN',
+        entityType: 'User',
+        dateFrom: '2020-01-01T00:00:00.000Z',
+        dateTo: '2100-01-01T00:00:00.000Z',
+      })
+      .set('Authorization', bearer(admin.token))
+      .expect(200);
+    expect(valid.body.data).toHaveLength(1);
+    expect(valid.body.data[0]).toMatchObject({ action: 'USER_LOGIN', entityType: 'User' });
+
+    const invalidAction = await request(app)
+      .get('/api/audit-logs?action=NOT_A_REAL_ACTION')
+      .set('Authorization', bearer(admin.token))
+      .expect(400);
+    expect(invalidAction.body.errors).toEqual(
+      expect.arrayContaining([expect.objectContaining({ path: 'action' })]),
+    );
+
+    const invalidEntity = await request(app)
+      .get('/api/audit-logs?entityType=Unknown')
+      .set('Authorization', bearer(admin.token))
+      .expect(400);
+    expect(invalidEntity.body.errors).toEqual(
+      expect.arrayContaining([expect.objectContaining({ path: 'entityType' })]),
+    );
+
+    const reversedRange = await request(app)
+      .get('/api/audit-logs')
+      .query({
+        dateFrom: '2026-08-04T00:00:00.000Z',
+        dateTo: '2026-08-03T00:00:00.000Z',
+      })
+      .set('Authorization', bearer(admin.token))
+      .expect(400);
+    expect(reversedRange.body).toMatchObject({
+      success: false,
+      message: 'Validation failed.',
+      errors: [{ path: 'dateTo', message: 'dateTo must be on or after dateFrom.' }],
+    });
+  });
+
   it('keeps Team Member performance scoped to their own assigned work', async () => {
     const admin = await createUser('admin@example.com', 'ADMIN');
     const manager = await createUser('manager@example.com', 'PROJECT_MANAGER');

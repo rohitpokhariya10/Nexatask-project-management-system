@@ -1,14 +1,15 @@
 import type { Request, Response } from 'express';
 import type { FilterQuery } from 'mongoose';
 import { pagination, sendSuccess } from '../../shared/apiResponse.js';
+import type { AuditAction, AuditEntityType } from './audit.constants.js';
 import { AuditLogModel, type AuditLog } from './auditLog.model.js';
 
 interface AuditQuery {
   page: number;
   limit: number;
   actorId?: string;
-  action?: string;
-  entityType?: string;
+  action?: AuditAction;
+  entityType?: AuditEntityType;
   dateFrom?: Date;
   dateTo?: Date;
 }

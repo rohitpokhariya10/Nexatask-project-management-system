@@ -1,0 +1,26 @@
+export const AUDIT_ACTIONS = [
+  'USER_REGISTERED',
+  'USER_LOGIN',
+  'USER_ROLE_CHANGED',
+  'USER_ACTIVATED',
+  'USER_DEACTIVATED',
+  'PROJECT_CREATED',
+  'PROJECT_UPDATED',
+  'PROJECT_DELETED',
+  'PROJECT_MANAGER_ASSIGNED',
+  'PROJECT_MEMBERS_ADDED',
+  'PROJECT_MEMBER_REMOVED',
+  'TASK_CREATED',
+  'TASK_UPDATED',
+  'TASK_DELETED',
+  'TASK_ASSIGNED',
+  'TASK_REASSIGNED',
+  'TASK_STATUS_CHANGED',
+  'ATTACHMENT_UPLOADED',
+  'ATTACHMENT_DELETED',
+] as const;
+
+export const AUDIT_ENTITY_TYPES = ['User', 'Project', 'Task', 'Attachment'] as const;
+
+export type AuditAction = (typeof AUDIT_ACTIONS)[number];
+export type AuditEntityType = (typeof AUDIT_ENTITY_TYPES)[number];

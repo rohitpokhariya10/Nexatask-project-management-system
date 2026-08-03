@@ -16,7 +16,8 @@
     "format:check": "prettier --check .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "seed": "tsx src/scripts/seed.ts"
+    "seed": "tsx src/scripts/seed.ts",
+    "bootstrap:admin": "node dist/scripts/bootstrapAdmin.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",

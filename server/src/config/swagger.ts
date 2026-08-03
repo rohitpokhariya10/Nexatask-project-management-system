@@ -1,3 +1,5 @@
+import { AUDIT_ACTIONS, AUDIT_ENTITY_TYPES } from '../modules/audit/audit.constants.js';
+
 const bearerSecurity = [{ bearerAuth: [] }];
 const idParameter = (name: string) => ({
   name,
@@ -350,8 +352,8 @@ export const openApiDocument = {
         properties: {
           id: { type: 'string' },
           actorId: { type: 'string' },
-          action: { type: 'string' },
-          entityType: { type: 'string' },
+          action: { type: 'string', enum: AUDIT_ACTIONS },
+          entityType: { type: 'string', enum: AUDIT_ENTITY_TYPES },
           entityId: { type: 'string' },
           summary: { type: 'string' },
           metadata: { type: 'object', additionalProperties: true },
@@ -554,11 +556,27 @@ export const openApiDocument = {
         security: bearerSecurity,
         parameters: [
           ...pagedParameters,
-          { name: 'search', in: 'query', schema: { type: 'string' } },
-          { name: 'role', in: 'query', schema: { type: 'string' } },
+          { name: 'search', in: 'query', schema: { type: 'string', maxLength: 100 } },
+          {
+            name: 'role',
+            in: 'query',
+            schema: { type: 'string', enum: ['ADMIN', 'PROJECT_MANAGER', 'TEAM_MEMBER'] },
+          },
           { name: 'isActive', in: 'query', schema: { type: 'boolean' } },
-          { name: 'sortBy', in: 'query', schema: { type: 'string' } },
-          { name: 'sortOrder', in: 'query', schema: { type: 'string', enum: ['asc', 'desc'] } },
+          {
+            name: 'sortBy',
+            in: 'query',
+            schema: {
+              type: 'string',
+              enum: ['name', 'email', 'role', 'isActive', 'createdAt'],
+              default: 'createdAt',
+            },
+          },
+          {
+            name: 'sortOrder',
+            in: 'query',
+            schema: { type: 'string', enum: ['asc', 'desc'], default: 'desc' },
+          },
         ],
         responses: {
           200: jsonResponse('Paginated users.', 'PaginatedUsersResponse'),
@@ -615,13 +633,32 @@ export const openApiDocument = {
         security: bearerSecurity,
         parameters: [
           ...pagedParameters,
-          { name: 'search', in: 'query', schema: { type: 'string' } },
-          { name: 'status', in: 'query', schema: { type: 'string' } },
+          { name: 'search', in: 'query', schema: { type: 'string', maxLength: 150 } },
+          {
+            name: 'status',
+            in: 'query',
+            schema: {
+              type: 'string',
+              enum: ['PLANNING', 'ACTIVE', 'ON_HOLD', 'COMPLETED'],
+            },
+          },
           { name: 'managerId', in: 'query', schema: { type: 'string' } },
           { name: 'deadlineFrom', in: 'query', schema: { type: 'string', format: 'date-time' } },
           { name: 'deadlineTo', in: 'query', schema: { type: 'string', format: 'date-time' } },
-          { name: 'sortBy', in: 'query', schema: { type: 'string' } },
-          { name: 'sortOrder', in: 'query', schema: { type: 'string', enum: ['asc', 'desc'] } },
+          {
+            name: 'sortBy',
+            in: 'query',
+            schema: {
+              type: 'string',
+              enum: ['name', 'status', 'startDate', 'deadline', 'createdAt', 'updatedAt'],
+              default: 'createdAt',
+            },
+          },
+          {
+            name: 'sortOrder',
+            in: 'query',
+            schema: { type: 'string', enum: ['asc', 'desc'], default: 'desc' },
+          },
         ],
         responses: {
           200: jsonResponse('Paginated projects.', 'PaginatedProjectsResponse'),
@@ -636,11 +673,15 @@ export const openApiDocument = {
           type: 'object',
           required: ['name', 'managerId', 'startDate', 'deadline'],
           properties: {
-            name: { type: 'string' },
-            description: { type: 'string' },
-            status: { type: 'string' },
+            name: { type: 'string', minLength: 1, maxLength: 150 },
+            description: { type: 'string', maxLength: 3000, default: '' },
+            status: {
+              type: 'string',
+              enum: ['PLANNING', 'ACTIVE', 'ON_HOLD', 'COMPLETED'],
+              default: 'PLANNING',
+            },
             managerId: { type: 'string' },
-            memberIds: { type: 'array', items: { type: 'string' } },
+            memberIds: { type: 'array', items: { type: 'string' }, maxItems: 100, default: [] },
             startDate: { type: 'string', format: 'date-time' },
             deadline: { type: 'string', format: 'date-time' },
           },
@@ -669,10 +710,14 @@ export const openApiDocument = {
         parameters: [idParameter('projectId')],
         requestBody: jsonBody({
           type: 'object',
+          minProperties: 1,
           properties: {
-            name: { type: 'string' },
-            description: { type: 'string' },
-            status: { type: 'string' },
+            name: { type: 'string', minLength: 1, maxLength: 150 },
+            description: { type: 'string', maxLength: 3000 },
+            status: {
+              type: 'string',
+              enum: ['PLANNING', 'ACTIVE', 'ON_HOLD', 'COMPLETED'],
+            },
             startDate: { type: 'string', format: 'date-time' },
             deadline: { type: 'string', format: 'date-time' },
           },
@@ -749,7 +794,7 @@ export const openApiDocument = {
         parameters: [
           idParameter('projectId'),
           ...pagedParameters,
-          { name: 'search', in: 'query', schema: { type: 'string' } },
+          { name: 'search', in: 'query', schema: { type: 'string', maxLength: 100 } },
         ],
         responses: {
           200: jsonResponse('Paginated eligible users.', 'PaginatedUsersResponse'),
@@ -783,9 +828,13 @@ export const openApiDocument = {
           type: 'object',
           required: ['title', 'dueDate'],
           properties: {
-            title: { type: 'string' },
-            description: { type: 'string' },
-            priority: { type: 'string', enum: ['LOW', 'MEDIUM', 'HIGH'] },
+            title: { type: 'string', minLength: 1, maxLength: 200 },
+            description: { type: 'string', maxLength: 5000, default: '' },
+            priority: {
+              type: 'string',
+              enum: ['LOW', 'MEDIUM', 'HIGH'],
+              default: 'MEDIUM',
+            },
             assigneeId: { type: 'string', nullable: true },
             dueDate: { type: 'string', format: 'date-time' },
           },
@@ -822,10 +871,11 @@ export const openApiDocument = {
         parameters: [idParameter('taskId')],
         requestBody: jsonBody({
           type: 'object',
+          minProperties: 1,
           properties: {
-            title: { type: 'string' },
-            description: { type: 'string' },
-            priority: { type: 'string' },
+            title: { type: 'string', minLength: 1, maxLength: 200 },
+            description: { type: 'string', maxLength: 5000 },
+            priority: { type: 'string', enum: ['LOW', 'MEDIUM', 'HIGH'] },
             dueDate: { type: 'string', format: 'date-time' },
           },
         }),
@@ -889,7 +939,7 @@ export const openApiDocument = {
         requestBody: jsonBody({
           type: 'object',
           required: ['body'],
-          properties: { body: { type: 'string', maxLength: 3000 } },
+          properties: { body: { type: 'string', minLength: 1, maxLength: 3000 } },
         }),
         responses: {
           201: jsonResponse('Created comment.', 'CommentResponse'),
@@ -906,7 +956,7 @@ export const openApiDocument = {
         requestBody: jsonBody({
           type: 'object',
           required: ['body'],
-          properties: { body: { type: 'string' } },
+          properties: { body: { type: 'string', minLength: 1, maxLength: 3000 } },
         }),
         responses: {
           200: jsonResponse('Updated comment.', 'CommentResponse'),
@@ -1040,8 +1090,12 @@ export const openApiDocument = {
         parameters: [
           ...pagedParameters,
           { name: 'actorId', in: 'query', schema: { type: 'string' } },
-          { name: 'action', in: 'query', schema: { type: 'string', maxLength: 100 } },
-          { name: 'entityType', in: 'query', schema: { type: 'string', maxLength: 80 } },
+          { name: 'action', in: 'query', schema: { type: 'string', enum: AUDIT_ACTIONS } },
+          {
+            name: 'entityType',
+            in: 'query',
+            schema: { type: 'string', enum: AUDIT_ENTITY_TYPES },
+          },
           { name: 'dateFrom', in: 'query', schema: { type: 'string', format: 'date-time' } },
           { name: 'dateTo', in: 'query', schema: { type: 'string', format: 'date-time' } },
         ],

@@ -1,11 +1,12 @@
 import type { Request } from 'express';
 import type { Types } from 'mongoose';
+import type { AuditAction, AuditEntityType } from './audit.constants.js';
 import { AuditLogModel } from './auditLog.model.js';
 
 interface AuditInput {
   actorId: Types.ObjectId;
-  action: string;
-  entityType: string;
+  action: AuditAction;
+  entityType: AuditEntityType;
   entityId: Types.ObjectId;
   summary: string;
   metadata?: Record<string, unknown>;
