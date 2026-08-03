@@ -116,6 +116,7 @@ export function ProjectFormPage() {
       toast.success(isEditing ? 'Project updated.' : 'Project created.');
       void queryClient.invalidateQueries({ queryKey: ['projects'] });
       void queryClient.invalidateQueries({ queryKey: ['project', saved.id] });
+      void queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       navigate(`/projects/${saved.id}`);
     },
     onError: (error) =>

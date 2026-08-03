@@ -15,7 +15,7 @@ import { ErrorState, PageLoader } from '../../components/common/AsyncState';
 import { Badge, Card, PageHeader } from '../../components/common/ui';
 import { useAuth } from '../../features/auth/auth-context';
 import { getApiError, request } from '../../lib/api';
-import { cn, formatDate } from '../../lib/utils';
+import { cn, formatDate, roleLabel } from '../../lib/utils';
 import type { DeadlineItem, ProjectProgress, TeamPerformance } from '../../types/api';
 
 interface DashboardOverview {
@@ -117,6 +117,57 @@ export function DashboardPage() {
         { name: 'Completed', value: tasks.completed },
         { name: 'Pending', value: tasks.pending },
       ];
+  const teamMemberGuidance = tasks.total
+    ? {
+        title: 'Continue your assigned work',
+        description:
+          'Open My tasks to update status, add progress comments, and share task attachments.',
+        actions: [
+          { label: 'Open my tasks', to: '/tasks/my' },
+          { label: 'View my projects', to: '/projects' },
+        ],
+      }
+    : projects.total
+      ? {
+          title: 'Project access is ready',
+          description:
+            'You can review your project now. An Admin or Project Manager still needs to assign your first task.',
+          actions: [
+            { label: 'View my projects', to: '/projects' },
+            { label: 'Check my tasks', to: '/tasks/my' },
+          ],
+        }
+      : {
+          title: 'Waiting for an assignment',
+          description:
+            'A new account starts as a Team Member. An Admin or Project Manager must add you to a project and assign a task before work appears here.',
+          actions: [
+            { label: 'Open my tasks', to: '/tasks/my' },
+            { label: 'View my projects', to: '/projects' },
+          ],
+        };
+  const roleGuidance =
+    user?.role === 'ADMIN'
+      ? {
+          title: 'Set up and manage the workspace',
+          description:
+            'Create projects, assign Project Managers, add Team Members, and review the audit trail.',
+          actions: [
+            { label: 'Create a project', to: '/projects/new' },
+            { label: 'Manage users', to: '/admin/users' },
+          ],
+        }
+      : user?.role === 'PROJECT_MANAGER'
+        ? {
+            title: 'Manage your assigned delivery work',
+            description:
+              'Open an assigned project to manage members, create tasks, and follow team progress.',
+            actions: [
+              { label: 'Open projects', to: '/projects' },
+              { label: 'Review my tasks', to: '/tasks/my' },
+            ],
+          }
+        : teamMemberGuidance;
 
   return (
     <div>
@@ -125,6 +176,34 @@ export function DashboardPage() {
         title={`Good to see you, ${user?.name.split(' ')[0] ?? 'there'}`}
         description="Here’s the latest progress across the work you can access."
       />
+
+      {user ? (
+        <Card className="mb-5 border border-blue-100 bg-gradient-to-r from-blue-50 to-white p-5 sm:flex sm:items-center sm:justify-between sm:gap-6 sm:p-6">
+          <div>
+            <Badge kind={user.role}>{roleLabel(user.role)}</Badge>
+            <h2 className="mt-3 text-lg font-bold text-ink">{roleGuidance.title}</h2>
+            <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-600">
+              {roleGuidance.description}
+            </p>
+          </div>
+          <div className="mt-4 flex shrink-0 flex-wrap gap-2 sm:mt-0">
+            {roleGuidance.actions.map((action, index) => (
+              <Link
+                key={action.to}
+                to={action.to}
+                className={cn(
+                  'inline-flex min-h-10 items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold transition',
+                  index === 0
+                    ? 'bg-accent text-white shadow-sm shadow-blue-200 hover:bg-blue-700'
+                    : 'border border-slate-300 bg-white text-slate-700 hover:bg-slate-50',
+                )}
+              >
+                {action.label}
+              </Link>
+            ))}
+          </div>
+        </Card>
+      ) : null}
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="Summary statistics">
         {cards.map(({ label, value, detail, icon: Icon, tone }) => (
@@ -160,7 +239,7 @@ export function DashboardPage() {
             <h2 className="font-bold text-ink">Completed vs pending</h2>
             <p className="mt-1 text-xs text-slate-500">Task completion across visible projects</p>
           </div>
-          <div className="mt-4 grid min-h-64 grid-cols-[1fr_auto] items-center gap-4">
+          <div className="mt-4 grid min-h-64 grid-cols-1 items-center gap-4 sm:grid-cols-[minmax(0,1fr)_auto]">
             <ResponsiveContainer width="100%" height={240}>
               <PieChart>
                 <Pie

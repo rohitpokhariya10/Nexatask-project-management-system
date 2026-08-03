@@ -204,7 +204,10 @@ export function TaskDetailsPage() {
       setDeleteTarget(null);
       if (target.type === 'task') {
         toast.success('Task deleted.');
+        queryClient.removeQueries({ queryKey: ['task', taskId] });
         void queryClient.invalidateQueries({ queryKey: ['project-tasks'] });
+        void queryClient.invalidateQueries({ queryKey: ['my-tasks'] });
+        void queryClient.invalidateQueries({ queryKey: ['dashboard'] });
         navigate(`/projects/${projectId}/tasks`);
         return;
       }

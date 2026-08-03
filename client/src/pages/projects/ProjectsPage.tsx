@@ -51,10 +51,13 @@ export function ProjectsPage() {
   const remove = useMutation({
     mutationFn: (projectId: string) =>
       request<null>({ method: 'DELETE', url: `/projects/${projectId}` }),
-    onSuccess: () => {
+    onSuccess: (_, projectId) => {
       toast.success('Project deleted.');
       setDeleteProject(null);
+      queryClient.removeQueries({ queryKey: ['project', projectId] });
+      queryClient.removeQueries({ queryKey: ['project-tasks', projectId] });
       void queryClient.invalidateQueries({ queryKey: ['projects'] });
+      void queryClient.invalidateQueries({ queryKey: ['my-tasks'] });
       void queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
     onError: (error) => toast.error(getApiError(error, 'Unable to delete the project.')),
@@ -254,28 +257,35 @@ export function ProjectsPage() {
           </div>
           <div className="grid gap-3 md:hidden">
             {projects.data.items.map((project) => (
-              <Link
-                key={project.id}
-                to={`/projects/${project.id}`}
-                className="surface block p-4 transition hover:border-blue-200"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <h2 className="truncate font-bold text-ink">{project.name}</h2>
-                    <p className="mt-1 line-clamp-2 text-sm leading-5 text-slate-500">
-                      {project.description}
-                    </p>
+              <div key={project.id} className="surface p-4 transition hover:border-blue-200">
+                <Link to={`/projects/${project.id}`} className="block">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <h2 className="truncate font-bold text-ink">{project.name}</h2>
+                      <p className="mt-1 line-clamp-2 text-sm leading-5 text-slate-500">
+                        {project.description}
+                      </p>
+                    </div>
+                    <Badge kind={project.status}>{projectStatusLabels[project.status]}</Badge>
                   </div>
-                  <Badge kind={project.status}>{projectStatusLabels[project.status]}</Badge>
-                </div>
-                <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3 text-xs text-slate-500">
-                  <span>{managerLabel(project)}</span>
-                  <span className="flex items-center gap-1.5">
-                    <CalendarDays className="h-3.5 w-3.5" />
-                    {formatDate(project.deadline)}
-                  </span>
-                </div>
-              </Link>
+                  <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3 text-xs text-slate-500">
+                    <span>{managerLabel(project)}</span>
+                    <span className="flex items-center gap-1.5">
+                      <CalendarDays className="h-3.5 w-3.5" />
+                      {formatDate(project.deadline)}
+                    </span>
+                  </div>
+                </Link>
+                {user?.role === 'ADMIN' ? (
+                  <button
+                    type="button"
+                    className="mt-3 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-xl border border-red-200 px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50"
+                    onClick={() => setDeleteProject(project)}
+                  >
+                    <Trash2 className="h-4 w-4" /> Delete project
+                  </button>
+                ) : null}
+              </div>
             ))}
             <Card>
               <Pagination pagination={projects.data.pagination} onPageChange={setPage} />
