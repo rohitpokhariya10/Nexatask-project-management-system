@@ -13,9 +13,56 @@ const pagedParameters = [
     schema: { type: 'integer', minimum: 1, maximum: 100, default: 20 },
   },
 ];
+const taskFilterParameters = [
+  { name: 'search', in: 'query', schema: { type: 'string', maxLength: 200 } },
+  {
+    name: 'status',
+    in: 'query',
+    schema: { type: 'string', enum: ['TODO', 'IN_PROGRESS', 'COMPLETED'] },
+  },
+  {
+    name: 'priority',
+    in: 'query',
+    schema: { type: 'string', enum: ['LOW', 'MEDIUM', 'HIGH'] },
+  },
+  { name: 'dueFrom', in: 'query', schema: { type: 'string', format: 'date-time' } },
+  { name: 'dueTo', in: 'query', schema: { type: 'string', format: 'date-time' } },
+  {
+    name: 'sortBy',
+    in: 'query',
+    schema: {
+      type: 'string',
+      enum: ['title', 'status', 'priority', 'dueDate', 'createdAt', 'updatedAt'],
+      default: 'createdAt',
+    },
+  },
+  {
+    name: 'sortOrder',
+    in: 'query',
+    schema: { type: 'string', enum: ['asc', 'desc'], default: 'desc' },
+  },
+];
 const jsonBody = (schema: Record<string, unknown>) => ({
   required: true,
   content: { 'application/json': { schema } },
+});
+const jsonResponse = (description: string, schemaName: string) => ({
+  description,
+  content: {
+    'application/json': { schema: { $ref: `#/components/schemas/${schemaName}` } },
+  },
+});
+const dataResponseSchema = (dataSchema: Record<string, unknown>) => ({
+  allOf: [
+    { $ref: '#/components/schemas/SuccessResponse' },
+    { type: 'object', properties: { data: dataSchema } },
+  ],
+});
+const paginatedDataResponseSchema = (dataSchema: Record<string, unknown>) => ({
+  allOf: [
+    { $ref: '#/components/schemas/PaginatedSuccessResponse' },
+    { type: 'object', properties: { data: dataSchema } },
+  ],
 });
 const standardResponses = {
   400: { $ref: '#/components/responses/ValidationError' },
@@ -57,7 +104,7 @@ export const openApiDocument = {
         type: 'object',
         required: ['success', 'message', 'errors'],
         properties: {
-          success: { type: 'boolean', example: false },
+          success: { type: 'boolean', enum: [false] },
           message: { type: 'string' },
           errors: { type: 'array', items: { $ref: '#/components/schemas/ErrorDetail' } },
         },
@@ -76,7 +123,7 @@ export const openApiDocument = {
       },
       User: {
         type: 'object',
-        required: ['id', 'name', 'email', 'role', 'isActive'],
+        required: ['id', 'name', 'email', 'role', 'isActive', 'createdAt', 'updatedAt'],
         properties: {
           id: { type: 'string' },
           name: { type: 'string' },
@@ -88,8 +135,33 @@ export const openApiDocument = {
           updatedAt: { type: 'string', format: 'date-time' },
         },
       },
+      UserSummary: {
+        type: 'object',
+        required: ['id', 'name', 'email', 'role', 'avatarUrl', 'isActive'],
+        properties: {
+          id: { type: 'string' },
+          name: { type: 'string' },
+          email: { type: 'string', format: 'email' },
+          role: { type: 'string', enum: ['ADMIN', 'PROJECT_MANAGER', 'TEAM_MEMBER'] },
+          avatarUrl: { type: 'string', nullable: true },
+          isActive: { type: 'boolean' },
+        },
+      },
       Project: {
         type: 'object',
+        required: [
+          'id',
+          'name',
+          'description',
+          'status',
+          'managerId',
+          'memberIds',
+          'startDate',
+          'deadline',
+          'createdBy',
+          'createdAt',
+          'updatedAt',
+        ],
         properties: {
           id: { type: 'string' },
           name: { type: 'string' },
@@ -97,8 +169,8 @@ export const openApiDocument = {
           status: { type: 'string', enum: ['PLANNING', 'ACTIVE', 'ON_HOLD', 'COMPLETED'] },
           managerId: { type: 'string' },
           memberIds: { type: 'array', items: { type: 'string' } },
-          manager: { allOf: [{ $ref: '#/components/schemas/User' }], nullable: true },
-          members: { type: 'array', items: { $ref: '#/components/schemas/User' } },
+          manager: { allOf: [{ $ref: '#/components/schemas/UserSummary' }], nullable: true },
+          members: { type: 'array', items: { $ref: '#/components/schemas/UserSummary' } },
           startDate: { type: 'string', format: 'date-time' },
           deadline: { type: 'string', format: 'date-time' },
           createdBy: { type: 'string' },
@@ -108,6 +180,20 @@ export const openApiDocument = {
       },
       Task: {
         type: 'object',
+        required: [
+          'id',
+          'projectId',
+          'title',
+          'description',
+          'status',
+          'priority',
+          'assigneeId',
+          'createdBy',
+          'dueDate',
+          'completedAt',
+          'createdAt',
+          'updatedAt',
+        ],
         properties: {
           id: { type: 'string' },
           projectId: { type: 'string' },
@@ -119,20 +205,34 @@ export const openApiDocument = {
           createdBy: { type: 'string' },
           dueDate: { type: 'string', format: 'date-time' },
           completedAt: { type: 'string', format: 'date-time', nullable: true },
+          createdAt: { type: 'string', format: 'date-time' },
+          updatedAt: { type: 'string', format: 'date-time' },
         },
       },
       Comment: {
         type: 'object',
+        required: ['id', 'taskId', 'authorId', 'body', 'createdAt', 'updatedAt'],
         properties: {
           id: { type: 'string' },
           taskId: { type: 'string' },
           authorId: { type: 'string' },
           body: { type: 'string' },
           createdAt: { type: 'string', format: 'date-time' },
+          updatedAt: { type: 'string', format: 'date-time' },
         },
       },
       Attachment: {
         type: 'object',
+        required: [
+          'id',
+          'taskId',
+          'uploadedBy',
+          'originalName',
+          'mimeType',
+          'size',
+          'relativeUrl',
+          'createdAt',
+        ],
         properties: {
           id: { type: 'string' },
           taskId: { type: 'string' },
@@ -144,6 +244,238 @@ export const openApiDocument = {
           createdAt: { type: 'string', format: 'date-time' },
         },
       },
+      SuccessResponse: {
+        type: 'object',
+        required: ['success', 'data'],
+        properties: {
+          success: { type: 'boolean', enum: [true] },
+          message: { type: 'string' },
+          data: { description: 'Endpoint-specific response data.' },
+        },
+      },
+      PaginatedSuccessResponse: {
+        allOf: [
+          { $ref: '#/components/schemas/SuccessResponse' },
+          {
+            type: 'object',
+            required: ['pagination'],
+            properties: { pagination: { $ref: '#/components/schemas/Pagination' } },
+          },
+        ],
+      },
+      AuthResponse: dataResponseSchema({
+        type: 'object',
+        required: ['user', 'accessToken'],
+        properties: {
+          user: { $ref: '#/components/schemas/User' },
+          accessToken: { type: 'string', description: 'JWT bearer access token.' },
+        },
+      }),
+      UserResponse: dataResponseSchema({
+        type: 'object',
+        required: ['user'],
+        properties: { user: { $ref: '#/components/schemas/User' } },
+      }),
+      ProjectResponse: dataResponseSchema({
+        type: 'object',
+        required: ['project'],
+        properties: { project: { $ref: '#/components/schemas/Project' } },
+      }),
+      TaskResponse: dataResponseSchema({
+        type: 'object',
+        required: ['task'],
+        properties: { task: { $ref: '#/components/schemas/Task' } },
+      }),
+      CommentResponse: dataResponseSchema({
+        type: 'object',
+        required: ['comment'],
+        properties: { comment: { $ref: '#/components/schemas/Comment' } },
+      }),
+      AttachmentResponse: dataResponseSchema({
+        type: 'object',
+        required: ['attachment'],
+        properties: { attachment: { $ref: '#/components/schemas/Attachment' } },
+      }),
+      PaginatedUsersResponse: paginatedDataResponseSchema({
+        type: 'array',
+        items: { $ref: '#/components/schemas/User' },
+      }),
+      PaginatedProjectsResponse: paginatedDataResponseSchema({
+        type: 'array',
+        items: { $ref: '#/components/schemas/Project' },
+      }),
+      PaginatedTasksResponse: paginatedDataResponseSchema({
+        type: 'array',
+        items: { $ref: '#/components/schemas/Task' },
+      }),
+      PaginatedCommentsResponse: paginatedDataResponseSchema({
+        type: 'array',
+        items: { $ref: '#/components/schemas/Comment' },
+      }),
+      AttachmentsResponse: dataResponseSchema({
+        type: 'array',
+        items: { $ref: '#/components/schemas/Attachment' },
+      }),
+      EmptySuccessResponse: dataResponseSchema({
+        type: 'object',
+        nullable: true,
+        example: null,
+      }),
+      HealthStatus: {
+        type: 'object',
+        required: ['status', 'database', 'uptimeSeconds', 'timestamp'],
+        properties: {
+          status: { type: 'string', enum: ['ok', 'degraded'] },
+          database: {
+            type: 'string',
+            enum: ['connected', 'connecting', 'disconnected'],
+          },
+          uptimeSeconds: { type: 'integer', minimum: 0 },
+          timestamp: { type: 'string', format: 'date-time' },
+        },
+      },
+      HealthResponse: dataResponseSchema({ $ref: '#/components/schemas/HealthStatus' }),
+      AuditLog: {
+        type: 'object',
+        required: [
+          'id',
+          'actorId',
+          'action',
+          'entityType',
+          'entityId',
+          'summary',
+          'metadata',
+          'createdAt',
+        ],
+        properties: {
+          id: { type: 'string' },
+          actorId: { type: 'string' },
+          action: { type: 'string' },
+          entityType: { type: 'string' },
+          entityId: { type: 'string' },
+          summary: { type: 'string' },
+          metadata: { type: 'object', additionalProperties: true },
+          ipAddress: { type: 'string' },
+          createdAt: { type: 'string', format: 'date-time' },
+        },
+      },
+      PaginatedAuditLogsResponse: paginatedDataResponseSchema({
+        type: 'array',
+        items: { $ref: '#/components/schemas/AuditLog' },
+      }),
+      DashboardOverview: {
+        type: 'object',
+        required: ['projects', 'tasks', 'completedVsPending', 'tasksByStatus'],
+        properties: {
+          projects: {
+            type: 'object',
+            required: ['total', 'active', 'completed'],
+            properties: {
+              total: { type: 'integer', minimum: 0 },
+              active: { type: 'integer', minimum: 0 },
+              completed: { type: 'integer', minimum: 0 },
+            },
+          },
+          tasks: {
+            type: 'object',
+            required: ['total', 'todo', 'inProgress', 'completed', 'pending', 'overdue'],
+            properties: {
+              total: { type: 'integer', minimum: 0 },
+              todo: { type: 'integer', minimum: 0 },
+              inProgress: { type: 'integer', minimum: 0 },
+              completed: { type: 'integer', minimum: 0 },
+              pending: { type: 'integer', minimum: 0 },
+              overdue: { type: 'integer', minimum: 0 },
+            },
+          },
+          completedVsPending: {
+            type: 'array',
+            items: {
+              type: 'object',
+              required: ['name', 'value'],
+              properties: {
+                name: { type: 'string', enum: ['Completed', 'Pending'] },
+                value: { type: 'integer', minimum: 0 },
+              },
+            },
+          },
+          tasksByStatus: {
+            type: 'array',
+            items: {
+              type: 'object',
+              required: ['status', 'count'],
+              properties: {
+                status: { type: 'string', enum: ['TODO', 'IN_PROGRESS', 'COMPLETED'] },
+                count: { type: 'integer', minimum: 0 },
+              },
+            },
+          },
+        },
+      },
+      DashboardOverviewResponse: dataResponseSchema({
+        $ref: '#/components/schemas/DashboardOverview',
+      }),
+      Deadline: {
+        type: 'object',
+        required: ['type', 'id', 'title', 'deadline', 'status', 'projectId'],
+        properties: {
+          type: { type: 'string', enum: ['PROJECT', 'TASK'] },
+          id: { type: 'string' },
+          title: { type: 'string' },
+          deadline: { type: 'string', format: 'date-time' },
+          status: {
+            type: 'string',
+            enum: ['PLANNING', 'ACTIVE', 'ON_HOLD', 'COMPLETED', 'TODO', 'IN_PROGRESS'],
+          },
+          projectId: { type: 'string' },
+        },
+      },
+      DeadlinesResponse: dataResponseSchema({
+        type: 'array',
+        items: { $ref: '#/components/schemas/Deadline' },
+      }),
+      ProjectProgress: {
+        type: 'object',
+        required: ['projectId', 'name', 'status', 'totalTasks', 'completedTasks', 'progress'],
+        properties: {
+          projectId: { type: 'string' },
+          name: { type: 'string' },
+          status: {
+            type: 'string',
+            enum: ['PLANNING', 'ACTIVE', 'ON_HOLD', 'COMPLETED'],
+          },
+          totalTasks: { type: 'integer', minimum: 0 },
+          completedTasks: { type: 'integer', minimum: 0 },
+          progress: { type: 'integer', minimum: 0, maximum: 100 },
+        },
+      },
+      ProjectProgressResponse: dataResponseSchema({
+        type: 'array',
+        items: { $ref: '#/components/schemas/ProjectProgress' },
+      }),
+      TeamPerformance: {
+        type: 'object',
+        required: [
+          'userId',
+          'name',
+          'assignedTaskCount',
+          'completedTaskCount',
+          'overdueTaskCount',
+          'completionPercentage',
+        ],
+        properties: {
+          userId: { type: 'string' },
+          name: { type: 'string' },
+          assignedTaskCount: { type: 'integer', minimum: 0 },
+          completedTaskCount: { type: 'integer', minimum: 0 },
+          overdueTaskCount: { type: 'integer', minimum: 0 },
+          completionPercentage: { type: 'number', minimum: 0, maximum: 100 },
+        },
+      },
+      TeamPerformanceResponse: dataResponseSchema({
+        type: 'array',
+        items: { $ref: '#/components/schemas/TeamPerformance' },
+      }),
     },
     responses: {
       ValidationError: {
@@ -165,7 +497,10 @@ export const openApiDocument = {
       get: {
         tags: ['Health'],
         summary: 'Read application and database health',
-        responses: { 200: { description: 'Health status' } },
+        responses: {
+          200: jsonResponse('Application and database are healthy.', 'HealthResponse'),
+          503: jsonResponse('Database is not connected.', 'HealthResponse'),
+        },
       },
     },
     '/auth/register': {
@@ -182,8 +517,8 @@ export const openApiDocument = {
           },
         }),
         responses: {
-          201: { description: 'User and accessToken' },
-          409: { description: 'Email already registered' },
+          201: jsonResponse('Registered user and access token.', 'AuthResponse'),
+          409: jsonResponse('Email is already registered.', 'ErrorResponse'),
           ...standardResponses,
         },
       },
@@ -198,8 +533,8 @@ export const openApiDocument = {
           properties: { email: { type: 'string', format: 'email' }, password: { type: 'string' } },
         }),
         responses: {
-          200: { description: 'User and accessToken' },
-          429: { description: 'Rate limit exceeded' },
+          200: jsonResponse('Authenticated user and access token.', 'AuthResponse'),
+          429: jsonResponse('Rate limit exceeded.', 'ErrorResponse'),
           ...standardResponses,
         },
       },
@@ -209,7 +544,7 @@ export const openApiDocument = {
         tags: ['Authentication'],
         summary: 'Read the authenticated user',
         security: bearerSecurity,
-        responses: { 200: { description: 'Current user' }, ...standardResponses },
+        responses: { 200: jsonResponse('Current user.', 'UserResponse'), ...standardResponses },
       },
     },
     '/users': {
@@ -225,7 +560,10 @@ export const openApiDocument = {
           { name: 'sortBy', in: 'query', schema: { type: 'string' } },
           { name: 'sortOrder', in: 'query', schema: { type: 'string', enum: ['asc', 'desc'] } },
         ],
-        responses: { 200: { description: 'Paginated users' }, ...standardResponses },
+        responses: {
+          200: jsonResponse('Paginated users.', 'PaginatedUsersResponse'),
+          ...standardResponses,
+        },
       },
     },
     '/users/{userId}': {
@@ -234,7 +572,7 @@ export const openApiDocument = {
         summary: 'Read a user (Admin)',
         security: bearerSecurity,
         parameters: [idParameter('userId')],
-        responses: { 200: { description: 'User' }, ...standardResponses },
+        responses: { 200: jsonResponse('User.', 'UserResponse'), ...standardResponses },
       },
     },
     '/users/{userId}/role': {
@@ -250,7 +588,7 @@ export const openApiDocument = {
             role: { type: 'string', enum: ['ADMIN', 'PROJECT_MANAGER', 'TEAM_MEMBER'] },
           },
         }),
-        responses: { 200: { description: 'Updated user' }, ...standardResponses },
+        responses: { 200: jsonResponse('Updated user.', 'UserResponse'), ...standardResponses },
       },
     },
     '/users/{userId}/status': {
@@ -267,7 +605,7 @@ export const openApiDocument = {
             confirmSelfDeactivation: { type: 'boolean' },
           },
         }),
-        responses: { 200: { description: 'Updated user' }, ...standardResponses },
+        responses: { 200: jsonResponse('Updated user.', 'UserResponse'), ...standardResponses },
       },
     },
     '/projects': {
@@ -285,7 +623,10 @@ export const openApiDocument = {
           { name: 'sortBy', in: 'query', schema: { type: 'string' } },
           { name: 'sortOrder', in: 'query', schema: { type: 'string', enum: ['asc', 'desc'] } },
         ],
-        responses: { 200: { description: 'Paginated projects' }, ...standardResponses },
+        responses: {
+          200: jsonResponse('Paginated projects.', 'PaginatedProjectsResponse'),
+          ...standardResponses,
+        },
       },
       post: {
         tags: ['Projects'],
@@ -304,7 +645,10 @@ export const openApiDocument = {
             deadline: { type: 'string', format: 'date-time' },
           },
         }),
-        responses: { 201: { description: 'Created project' }, ...standardResponses },
+        responses: {
+          201: jsonResponse('Created project.', 'ProjectResponse'),
+          ...standardResponses,
+        },
       },
     },
     '/projects/{projectId}': {
@@ -314,7 +658,7 @@ export const openApiDocument = {
         security: bearerSecurity,
         parameters: [idParameter('projectId')],
         responses: {
-          200: { description: 'Project with manager and member summaries' },
+          200: jsonResponse('Project with manager and member summaries.', 'ProjectResponse'),
           ...standardResponses,
         },
       },
@@ -333,14 +677,20 @@ export const openApiDocument = {
             deadline: { type: 'string', format: 'date-time' },
           },
         }),
-        responses: { 200: { description: 'Updated project' }, ...standardResponses },
+        responses: {
+          200: jsonResponse('Updated project.', 'ProjectResponse'),
+          ...standardResponses,
+        },
       },
       delete: {
         tags: ['Projects'],
         summary: 'Delete a project (Admin)',
         security: bearerSecurity,
         parameters: [idParameter('projectId')],
-        responses: { 200: { description: 'Deleted' }, ...standardResponses },
+        responses: {
+          200: jsonResponse('Project deleted.', 'EmptySuccessResponse'),
+          ...standardResponses,
+        },
       },
     },
     '/projects/{projectId}/manager': {
@@ -354,7 +704,10 @@ export const openApiDocument = {
           required: ['managerId'],
           properties: { managerId: { type: 'string' } },
         }),
-        responses: { 200: { description: 'Updated project' }, ...standardResponses },
+        responses: {
+          200: jsonResponse('Updated project.', 'ProjectResponse'),
+          ...standardResponses,
+        },
       },
     },
     '/projects/{projectId}/members': {
@@ -370,7 +723,10 @@ export const openApiDocument = {
             userIds: { type: 'array', items: { type: 'string' } },
           },
         }),
-        responses: { 200: { description: 'Updated project' }, ...standardResponses },
+        responses: {
+          200: jsonResponse('Updated project.', 'ProjectResponse'),
+          ...standardResponses,
+        },
       },
     },
     '/projects/{projectId}/members/{userId}': {
@@ -379,7 +735,10 @@ export const openApiDocument = {
         summary: 'Remove a project member',
         security: bearerSecurity,
         parameters: [idParameter('projectId'), idParameter('userId')],
-        responses: { 200: { description: 'Updated project' }, ...standardResponses },
+        responses: {
+          200: jsonResponse('Updated project.', 'ProjectResponse'),
+          ...standardResponses,
+        },
       },
     },
     '/projects/{projectId}/eligible-members': {
@@ -392,7 +751,10 @@ export const openApiDocument = {
           ...pagedParameters,
           { name: 'search', in: 'query', schema: { type: 'string' } },
         ],
-        responses: { 200: { description: 'Paginated eligible users' }, ...standardResponses },
+        responses: {
+          200: jsonResponse('Paginated eligible users.', 'PaginatedUsersResponse'),
+          ...standardResponses,
+        },
       },
     },
     '/projects/{projectId}/tasks': {
@@ -403,14 +765,14 @@ export const openApiDocument = {
         parameters: [
           idParameter('projectId'),
           ...pagedParameters,
-          { name: 'search', in: 'query', schema: { type: 'string' } },
-          { name: 'status', in: 'query', schema: { type: 'string' } },
-          { name: 'priority', in: 'query', schema: { type: 'string' } },
+          ...taskFilterParameters.slice(0, 3),
           { name: 'assigneeId', in: 'query', schema: { type: 'string' } },
-          { name: 'dueFrom', in: 'query', schema: { type: 'string', format: 'date-time' } },
-          { name: 'dueTo', in: 'query', schema: { type: 'string', format: 'date-time' } },
+          ...taskFilterParameters.slice(3),
         ],
-        responses: { 200: { description: 'Paginated tasks' }, ...standardResponses },
+        responses: {
+          200: jsonResponse('Paginated project tasks.', 'PaginatedTasksResponse'),
+          ...standardResponses,
+        },
       },
       post: {
         tags: ['Tasks'],
@@ -428,16 +790,21 @@ export const openApiDocument = {
             dueDate: { type: 'string', format: 'date-time' },
           },
         }),
-        responses: { 201: { description: 'Created task' }, ...standardResponses },
+        responses: { 201: jsonResponse('Created task.', 'TaskResponse'), ...standardResponses },
       },
     },
     '/tasks/my-tasks': {
       get: {
         tags: ['Tasks'],
         summary: 'List tasks assigned to the current user',
+        description:
+          'Returns only tasks assigned to the authenticated user within projects visible to that user.',
         security: bearerSecurity,
-        parameters: [...pagedParameters],
-        responses: { 200: { description: 'Paginated tasks' }, ...standardResponses },
+        parameters: [...pagedParameters, ...taskFilterParameters],
+        responses: {
+          200: jsonResponse('Paginated assigned tasks.', 'PaginatedTasksResponse'),
+          ...standardResponses,
+        },
       },
     },
     '/tasks/{taskId}': {
@@ -446,7 +813,7 @@ export const openApiDocument = {
         summary: 'Read an accessible task',
         security: bearerSecurity,
         parameters: [idParameter('taskId')],
-        responses: { 200: { description: 'Task' }, ...standardResponses },
+        responses: { 200: jsonResponse('Task.', 'TaskResponse'), ...standardResponses },
       },
       patch: {
         tags: ['Tasks'],
@@ -462,14 +829,17 @@ export const openApiDocument = {
             dueDate: { type: 'string', format: 'date-time' },
           },
         }),
-        responses: { 200: { description: 'Updated task' }, ...standardResponses },
+        responses: { 200: jsonResponse('Updated task.', 'TaskResponse'), ...standardResponses },
       },
       delete: {
         tags: ['Tasks'],
         summary: 'Delete a task in an assigned project',
         security: bearerSecurity,
         parameters: [idParameter('taskId')],
-        responses: { 200: { description: 'Deleted' }, ...standardResponses },
+        responses: {
+          200: jsonResponse('Task deleted.', 'EmptySuccessResponse'),
+          ...standardResponses,
+        },
       },
     },
     '/tasks/{taskId}/status': {
@@ -483,7 +853,7 @@ export const openApiDocument = {
           required: ['status'],
           properties: { status: { type: 'string', enum: ['TODO', 'IN_PROGRESS', 'COMPLETED'] } },
         }),
-        responses: { 200: { description: 'Updated task' }, ...standardResponses },
+        responses: { 200: jsonResponse('Updated task.', 'TaskResponse'), ...standardResponses },
       },
     },
     '/tasks/{taskId}/assignee': {
@@ -497,7 +867,7 @@ export const openApiDocument = {
           required: ['assigneeId'],
           properties: { assigneeId: { type: 'string', nullable: true } },
         }),
-        responses: { 200: { description: 'Updated task' }, ...standardResponses },
+        responses: { 200: jsonResponse('Updated task.', 'TaskResponse'), ...standardResponses },
       },
     },
     '/tasks/{taskId}/comments': {
@@ -506,7 +876,10 @@ export const openApiDocument = {
         summary: 'List comments for an accessible task',
         security: bearerSecurity,
         parameters: [idParameter('taskId'), ...pagedParameters],
-        responses: { 200: { description: 'Paginated comments' }, ...standardResponses },
+        responses: {
+          200: jsonResponse('Paginated comments.', 'PaginatedCommentsResponse'),
+          ...standardResponses,
+        },
       },
       post: {
         tags: ['Comments'],
@@ -518,7 +891,10 @@ export const openApiDocument = {
           required: ['body'],
           properties: { body: { type: 'string', maxLength: 3000 } },
         }),
-        responses: { 201: { description: 'Created comment' }, ...standardResponses },
+        responses: {
+          201: jsonResponse('Created comment.', 'CommentResponse'),
+          ...standardResponses,
+        },
       },
     },
     '/comments/{commentId}': {
@@ -532,14 +908,20 @@ export const openApiDocument = {
           required: ['body'],
           properties: { body: { type: 'string' } },
         }),
-        responses: { 200: { description: 'Updated comment' }, ...standardResponses },
+        responses: {
+          200: jsonResponse('Updated comment.', 'CommentResponse'),
+          ...standardResponses,
+        },
       },
       delete: {
         tags: ['Comments'],
         summary: 'Delete an owned or moderatable comment',
         security: bearerSecurity,
         parameters: [idParameter('commentId')],
-        responses: { 200: { description: 'Deleted' }, ...standardResponses },
+        responses: {
+          200: jsonResponse('Comment deleted.', 'EmptySuccessResponse'),
+          ...standardResponses,
+        },
       },
     },
     '/tasks/{taskId}/attachments': {
@@ -548,7 +930,10 @@ export const openApiDocument = {
         summary: 'List task attachments',
         security: bearerSecurity,
         parameters: [idParameter('taskId')],
-        responses: { 200: { description: 'Attachments' }, ...standardResponses },
+        responses: {
+          200: jsonResponse('Task attachments.', 'AttachmentsResponse'),
+          ...standardResponses,
+        },
       },
       post: {
         tags: ['Attachments'],
@@ -567,7 +952,10 @@ export const openApiDocument = {
             },
           },
         },
-        responses: { 201: { description: 'Uploaded attachment' }, ...standardResponses },
+        responses: {
+          201: jsonResponse('Uploaded attachment.', 'AttachmentResponse'),
+          ...standardResponses,
+        },
       },
     },
     '/attachments/{attachmentId}': {
@@ -576,7 +964,10 @@ export const openApiDocument = {
         summary: 'Delete an owned or moderatable attachment',
         security: bearerSecurity,
         parameters: [idParameter('attachmentId')],
-        responses: { 200: { description: 'Deleted' }, ...standardResponses },
+        responses: {
+          200: jsonResponse('Attachment deleted.', 'EmptySuccessResponse'),
+          ...standardResponses,
+        },
       },
     },
     '/attachments/{attachmentId}/download': {
@@ -585,7 +976,15 @@ export const openApiDocument = {
         summary: 'Download an accessible attachment',
         security: bearerSecurity,
         parameters: [idParameter('attachmentId')],
-        responses: { 200: { description: 'Attachment bytes' }, ...standardResponses },
+        responses: {
+          200: {
+            description: 'Attachment bytes.',
+            content: {
+              'application/octet-stream': { schema: { type: 'string', format: 'binary' } },
+            },
+          },
+          ...standardResponses,
+        },
       },
     },
     '/dashboard/overview': {
@@ -593,7 +992,10 @@ export const openApiDocument = {
         tags: ['Dashboard'],
         summary: 'Role-scoped overview aggregations',
         security: bearerSecurity,
-        responses: { 200: { description: 'Project and task metrics' }, ...standardResponses },
+        responses: {
+          200: jsonResponse('Project and task metrics.', 'DashboardOverviewResponse'),
+          ...standardResponses,
+        },
       },
     },
     '/dashboard/deadlines': {
@@ -601,7 +1003,10 @@ export const openApiDocument = {
         tags: ['Dashboard'],
         summary: 'Deadlines in the next seven days',
         security: bearerSecurity,
-        responses: { 200: { description: 'Project and task deadlines' }, ...standardResponses },
+        responses: {
+          200: jsonResponse('Project and task deadlines.', 'DeadlinesResponse'),
+          ...standardResponses,
+        },
       },
     },
     '/dashboard/project-progress': {
@@ -609,7 +1014,10 @@ export const openApiDocument = {
         tags: ['Dashboard'],
         summary: 'Role-scoped project completion percentages',
         security: bearerSecurity,
-        responses: { 200: { description: 'Project progress' }, ...standardResponses },
+        responses: {
+          200: jsonResponse('Project progress.', 'ProjectProgressResponse'),
+          ...standardResponses,
+        },
       },
     },
     '/dashboard/team-performance': {
@@ -617,24 +1025,28 @@ export const openApiDocument = {
         tags: ['Dashboard'],
         summary: 'Understandable assignee completion metrics',
         security: bearerSecurity,
-        responses: { 200: { description: 'Team performance' }, ...standardResponses },
+        responses: {
+          200: jsonResponse('Team performance.', 'TeamPerformanceResponse'),
+          ...standardResponses,
+        },
       },
     },
     '/audit-logs': {
       get: {
         tags: ['Audit'],
         summary: 'List audit logs (Admin)',
+        description: 'Returns matching audit logs ordered newest first.',
         security: bearerSecurity,
         parameters: [
           ...pagedParameters,
           { name: 'actorId', in: 'query', schema: { type: 'string' } },
-          { name: 'action', in: 'query', schema: { type: 'string' } },
-          { name: 'entityType', in: 'query', schema: { type: 'string' } },
+          { name: 'action', in: 'query', schema: { type: 'string', maxLength: 100 } },
+          { name: 'entityType', in: 'query', schema: { type: 'string', maxLength: 80 } },
           { name: 'dateFrom', in: 'query', schema: { type: 'string', format: 'date-time' } },
           { name: 'dateTo', in: 'query', schema: { type: 'string', format: 'date-time' } },
         ],
         responses: {
-          200: { description: 'Newest-first paginated audit logs' },
+          200: jsonResponse('Newest-first paginated audit logs.', 'PaginatedAuditLogsResponse'),
           ...standardResponses,
         },
       },
