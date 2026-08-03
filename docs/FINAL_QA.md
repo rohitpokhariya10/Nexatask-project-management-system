@@ -69,9 +69,9 @@ Never infer `PASS` from code review, file presence, another command, or an earli
 |  38 | Verify README commands exactly match package scripts/behavior            | PASS           | Documented install/lint/test/build/seed/Compose commands executed   |
 |  39 | Verify real `.env` files/secrets are not tracked                         | PASS           | `git ls-files` shows only `.env.example` files                      |
 |  40 | Verify generated uploads are not tracked                                 | PASS           | Only `server/uploads/.gitkeep` is tracked                           |
-|  41 | Record exact final `git status`                                          | NOT TESTED     | Recorded after the evidence commit in final handoff                 |
+|  41 | Record exact final `git status`                                          | PASS           | After `d553068`: `main...origin/main`, no local changes             |
 |  42 | Review `git log --oneline --decorate --graph` for focused history        | PASS           | Focused feature/fix/docs commits reviewed                           |
-|  43 | Push final verified commit to `origin/main` without force                | NOT TESTED     | Performed after this evidence commit                                |
+|  43 | Push final verified commit to `origin/main` without force                | PASS           | `d553068` pushed normally; docs-only closeout follows the same path |
 
 ## Required automated backend coverage
 
@@ -157,9 +157,9 @@ Do not publish the final report until each value is factual.
 | Project name                 | PASS                | CountryEdu NexaTask                                                               |
 | Current branch               | PASS                | `main`                                                                            |
 | Git remote                   | PASS                | `https://github.com/rohitpokhariya10/Nexatask-project-management-system.git`      |
-| Total commits created        | PASS                | 14 including this evidence commit                                                 |
-| Final commit hash            | PASS                | Verified implementation build `74a694c`; evidence-commit hash is in final handoff |
-| Push status                  | PASS                | Implementation build pushed to `origin/main`; evidence commit follows             |
+| Total commits created        | PASS                | 15 including the docs-only repository closeout                                    |
+| Final commit hash            | PASS                | Verified build `74a694c`; evidence base `d553068`; closeout hash is in handoff    |
+| Push status                  | PASS                | Verified implementation and evidence commits pushed to `origin/main`              |
 | Completed features           | PASS                | Auth/RBAC, users, projects, tasks, collaboration, dashboards, audit, docs, Docker |
 | Remaining features           | PASS                | Hosted deployment and manual browser/Postman presentation verification            |
 | Test results                 | PASS                | 20 backend + 9 frontend tests                                                     |
@@ -172,4 +172,4 @@ Do not publish the final report until each value is factual.
 | Demo credentials/seed result | PASS                | Seed passed; local-only credentials are in `DEMO.md`                              |
 | Deployment status/URLs       | PENDING CREDENTIALS | No hosting or production MongoDB credentials were provided                        |
 | Known limitations            | PASS                | Manual browser QA pending; frontend emits an 882 kB chunk warning                 |
-| Exact final Git status       | NOT TESTED          | Recorded after committing and pushing this evidence update                        |
+| Exact final Git status       | PASS                | `## main...origin/main` with no local changes after `d553068`                     |
