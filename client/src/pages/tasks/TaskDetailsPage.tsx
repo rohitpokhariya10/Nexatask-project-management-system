@@ -100,9 +100,25 @@ export function TaskDetailsPage() {
   const canUpdateStatus = Boolean(
     user && task.data && (canManage || entityId(task.data.assigneeId) === user.id),
   );
-  const members = useMemo(() => project.data?.members ?? [], [project.data?.members]);
+  const projectMembers = useMemo(
+    () =>
+      project.data?.members ??
+      project.data?.memberIds.filter(
+        (member): member is Exclude<typeof member, string> => typeof member !== 'string',
+      ) ??
+      [],
+    [project.data?.memberIds, project.data?.members],
+  );
+  const members = useMemo(
+    () => projectMembers.filter((member) => member.isActive),
+    [projectMembers],
+  );
+  const currentAssigneeId = entityId(task.data?.assigneeId);
+  const inactiveAssignee = projectMembers.find(
+    (member) => member.id === currentAssigneeId && !member.isActive,
+  );
   const assigneeName =
-    members.find((member) => member.id === entityId(task.data?.assigneeId))?.name ??
+    projectMembers.find((member) => member.id === currentAssigneeId)?.name ??
     displayUser(task.data?.assigneeId);
 
   const invalidateTask = () => {
@@ -327,6 +343,11 @@ export function TaskDetailsPage() {
               onChange={(event) => assign.mutate(event.target.value)}
             >
               <option value="">Unassigned</option>
+              {inactiveAssignee ? (
+                <option value={inactiveAssignee.id} disabled>
+                  {inactiveAssignee.name} · inactive
+                </option>
+              ) : null}
               {members.map((member) => (
                 <option key={member.id} value={member.id}>
                   {member.name}

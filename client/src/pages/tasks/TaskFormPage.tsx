@@ -141,11 +141,16 @@ export function TaskFormPage() {
   if (project.isPending) return <PageLoader label="Loading task form" />;
   if (project.isError || !project.data)
     return <ErrorState message={getApiError(project.error, 'Task form is unavailable.')} />;
-  const members =
+  const allMembers =
     project.data.members ??
     project.data.memberIds.filter(
       (member): member is Exclude<typeof member, string> => typeof member !== 'string',
     );
+  const members = allMembers.filter((member) => member.isActive);
+  const currentAssigneeId = entityId(task.data?.assigneeId);
+  const inactiveAssignee = allMembers.find(
+    (member) => member.id === currentAssigneeId && !member.isActive,
+  );
 
   return (
     <div className="mx-auto max-w-4xl">
@@ -230,13 +235,18 @@ export function TaskFormPage() {
               </label>
               <select id="task-assignee" className="field" {...register('assigneeId')}>
                 <option value="">Unassigned</option>
+                {inactiveAssignee ? (
+                  <option value={inactiveAssignee.id} disabled>
+                    {inactiveAssignee.name} · inactive
+                  </option>
+                ) : null}
                 {members.map((member) => (
                   <option value={member.id} key={member.id}>
                     {member.name} · {member.email}
                   </option>
                 ))}
               </select>
-              {!members.length && project.data.memberIds.length ? (
+              {!allMembers.length && project.data.memberIds.length ? (
                 <p className="mt-1.5 text-xs text-amber-700">
                   Member details are unavailable; existing assignment will be retained unless
                   cleared.

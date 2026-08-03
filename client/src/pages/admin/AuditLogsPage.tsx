@@ -30,6 +30,25 @@ const actionOptions = [
   'ATTACHMENT_DELETED',
 ];
 
+export function auditDateBoundary(value: string, endOfDay: boolean): string | undefined {
+  if (!value) return undefined;
+  const parts = value.split('-').map(Number);
+  if (parts.length !== 3 || parts.some((part) => !Number.isInteger(part))) return undefined;
+  const [year, month, day] = parts as [number, number, number];
+  const date = new Date(
+    year,
+    month - 1,
+    day,
+    endOfDay ? 23 : 0,
+    endOfDay ? 59 : 0,
+    endOfDay ? 59 : 0,
+    endOfDay ? 999 : 0,
+  );
+  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day)
+    return undefined;
+  return date.toISOString();
+}
+
 export function AuditLogsPage() {
   const [actorId, setActorId] = useState('');
   const [action, setAction] = useState('');
@@ -56,8 +75,8 @@ export function AuditLogsPage() {
           actorId: actorId || undefined,
           action: action || undefined,
           entityType: entityType || undefined,
-          dateFrom: dateFrom || undefined,
-          dateTo: dateTo || undefined,
+          dateFrom: auditDateBoundary(dateFrom, false),
+          dateTo: auditDateBoundary(dateTo, true),
         },
       }),
   });
@@ -121,6 +140,7 @@ export function AuditLogsPage() {
               className="field"
               type="date"
               value={dateFrom}
+              max={dateTo || undefined}
               onChange={(event) => update(() => setDateFrom(event.target.value))}
             />
           </label>
@@ -130,6 +150,7 @@ export function AuditLogsPage() {
               className="field"
               type="date"
               value={dateTo}
+              min={dateFrom || undefined}
               onChange={(event) => update(() => setDateTo(event.target.value))}
             />
           </label>
