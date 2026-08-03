@@ -1,0 +1,491 @@
+{
+  "info": {
+    "_postman_id": "c8569b22-24e7-4e94-ae68-c8fb11c617de",
+    "name": "CountryEdu NexaTask",
+    "description": "Target REST API collection for CountryEdu NexaTask. Runtime behavior remains unverified until the collection is executed against the implemented API. Run Auth / Login first to store accessToken. Set resource ID variables as records are created or selected. Demo credentials are local-development only.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "pm.test('Response uses JSON when a body is present', function () {",
+          "  if (pm.response.text()) {",
+          "    pm.expect(pm.response.headers.get('Content-Type') || '').to.include('application/json');",
+          "  }",
+          "});"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5000", "type": "string" },
+    { "key": "accessToken", "value": "", "type": "string" },
+    { "key": "projectId", "value": "", "type": "string" },
+    { "key": "taskId", "value": "", "type": "string" },
+    { "key": "userId", "value": "", "type": "string" },
+    { "key": "commentId", "value": "", "type": "string" },
+    { "key": "attachmentId", "value": "", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "Platform",
+      "item": [
+        {
+          "name": "Health",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/health",
+            "description": "Safe process/database readiness target."
+          }
+        },
+        {
+          "name": "Swagger UI",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/docs",
+            "description": "Swagger/OpenAPI UI target. Postman may display HTML."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json", "type": "text" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Demo Member Four\",\n  \"email\": \"member4@nexatask.demo\",\n  \"password\": \"Demo@12345\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/auth/register",
+            "description": "Registers an active TEAM_MEMBER. Change the email before repeated runs."
+          }
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Login succeeds', function () { pm.response.to.have.status(200); });",
+                  "var body = {};",
+                  "try { body = pm.response.json(); } catch (error) { console.warn('Login response was not JSON'); }",
+                  "var data = body.data || {};",
+                  "var token = data.accessToken || data.token;",
+                  "pm.test('Login returns an access token', function () { pm.expect(token).to.be.a('string').and.not.empty; });",
+                  "if (token) { pm.collectionVariables.set('accessToken', token); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json", "type": "text" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@nexatask.demo\",\n  \"password\": \"Demo@12345\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/auth/login",
+            "description": "Uses local demo credentials and stores data.accessToken (or data.token) as collection variable accessToken."
+          }
+        },
+        {
+          "name": "Current User",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/me"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Users (Admin)",
+      "item": [
+        {
+          "name": "List Users",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/users?page=1&limit=10&search=&role=TEAM_MEMBER&isActive=true&sortBy=createdAt&sortOrder=desc",
+            "description": "Remove optional blank filters if the implementation rejects empty values. Supports backend search/filter/sort/pagination."
+          }
+        },
+        {
+          "name": "Get User",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/users/{{userId}}"
+          }
+        },
+        {
+          "name": "Update User Role",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json", "type": "text" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"PROJECT_MANAGER\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/users/{{userId}}/role"
+          }
+        },
+        {
+          "name": "Update User Activation",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json", "type": "text" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"isActive\": true\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/users/{{userId}}/status"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Projects",
+      "item": [
+        {
+          "name": "Create Project",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  var body = pm.response.json(); var data = body.data || {}; var id = data.id || (data.project && data.project.id);",
+                  "  if (id) { pm.collectionVariables.set('projectId', id); }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json", "type": "text" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Campus Content Refresh\",\n  \"description\": \"Refresh program pages and admission guidance.\",\n  \"status\": \"PLANNING\",\n  \"startDate\": \"2026-08-04T00:00:00.000Z\",\n  \"deadline\": \"2026-08-18T00:00:00.000Z\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/projects"
+          }
+        },
+        {
+          "name": "List Projects",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/projects?page=1&limit=10&status=ACTIVE&sortBy=deadline&sortOrder=asc",
+            "description": "Optional filters: search, status, managerId, deadlineFrom, deadlineTo."
+          }
+        },
+        {
+          "name": "Get Project",
+          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/api/projects/{{projectId}}" }
+        },
+        {
+          "name": "Update Project",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json", "type": "text" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"ACTIVE\",\n  \"description\": \"Refresh program pages, dates, and admission guidance.\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/projects/{{projectId}}"
+          }
+        },
+        {
+          "name": "Delete Project",
+          "request": { "method": "DELETE", "header": [], "url": "{{baseUrl}}/api/projects/{{projectId}}" }
+        },
+        {
+          "name": "Assign Project Manager",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json", "type": "text" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"managerId\": \"{{userId}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/projects/{{projectId}}/manager"
+          }
+        },
+        {
+          "name": "Add Project Members",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json", "type": "text" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userIds\": [\"{{userId}}\"]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/projects/{{projectId}}/members"
+          }
+        },
+        {
+          "name": "Remove Project Member",
+          "request": { "method": "DELETE", "header": [], "url": "{{baseUrl}}/api/projects/{{projectId}}/members/{{userId}}" }
+        }
+      ]
+    },
+    {
+      "name": "Tasks",
+      "item": [
+        {
+          "name": "Create Task",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  var body = pm.response.json(); var data = body.data || {}; var id = data.id || (data.task && data.task.id);",
+                  "  if (id) { pm.collectionVariables.set('taskId', id); }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json", "type": "text" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Review scholarship copy\",\n  \"description\": \"Check dates and eligibility language.\",\n  \"priority\": \"HIGH\",\n  \"assigneeId\": \"{{userId}}\",\n  \"dueDate\": \"2026-08-10T12:00:00.000Z\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/projects/{{projectId}}/tasks"
+          }
+        },
+        {
+          "name": "List Project Tasks",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/projects/{{projectId}}/tasks?page=1&limit=10&status=TODO&priority=HIGH&sortBy=dueDate&sortOrder=asc",
+            "description": "Optional filters: search, status, priority, assigneeId, dueFrom, dueTo."
+          }
+        },
+        {
+          "name": "My Tasks",
+          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/api/tasks/my-tasks?page=1&limit=10&sortBy=dueDate&sortOrder=asc" }
+        },
+        {
+          "name": "Get Task",
+          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/api/tasks/{{taskId}}" }
+        },
+        {
+          "name": "Update Task",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json", "type": "text" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Check dates, eligibility language, and source links.\",\n  \"priority\": \"MEDIUM\",\n  \"dueDate\": \"2026-08-11T12:00:00.000Z\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/tasks/{{taskId}}"
+          }
+        },
+        {
+          "name": "Delete Task",
+          "request": { "method": "DELETE", "header": [], "url": "{{baseUrl}}/api/tasks/{{taskId}}" }
+        },
+        {
+          "name": "Update Task Status",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json", "type": "text" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"IN_PROGRESS\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/tasks/{{taskId}}/status"
+          }
+        },
+        {
+          "name": "Assign Task",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json", "type": "text" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"assigneeId\": \"{{userId}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/tasks/{{taskId}}/assignee"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Comments",
+      "item": [
+        {
+          "name": "Add Comment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  var body = pm.response.json(); var data = body.data || {}; var id = data.id || (data.comment && data.comment.id);",
+                  "  if (id) { pm.collectionVariables.set('commentId', id); }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json", "type": "text" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"body\": \"The eligibility dates have been checked.\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/tasks/{{taskId}}/comments"
+          }
+        },
+        {
+          "name": "List Task Comments",
+          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/api/tasks/{{taskId}}/comments" }
+        },
+        {
+          "name": "Update Comment",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json", "type": "text" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"body\": \"The eligibility dates and source links have been checked.\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/comments/{{commentId}}"
+          }
+        },
+        {
+          "name": "Delete Comment",
+          "request": { "method": "DELETE", "header": [], "url": "{{baseUrl}}/api/comments/{{commentId}}" }
+        }
+      ]
+    },
+    {
+      "name": "Attachments",
+      "item": [
+        {
+          "name": "Upload Attachment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  var body = pm.response.json(); var data = body.data || {}; var id = data.id || (data.attachment && data.attachment.id);",
+                  "  if (id) { pm.collectionVariables.set('attachmentId', id); }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "file", "type": "file", "src": "", "description": "Choose a small allowed local demo file in Postman." }
+              ]
+            },
+            "url": "{{baseUrl}}/api/tasks/{{taskId}}/attachments",
+            "description": "Do not manually set Content-Type; Postman supplies the multipart boundary."
+          }
+        },
+        {
+          "name": "List Task Attachments",
+          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/api/tasks/{{taskId}}/attachments" }
+        },
+        {
+          "name": "Delete Attachment",
+          "request": { "method": "DELETE", "header": [], "url": "{{baseUrl}}/api/attachments/{{attachmentId}}" }
+        }
+      ]
+    },
+    {
+      "name": "Dashboard",
+      "item": [
+        {
+          "name": "Overview",
+          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/api/dashboard/overview" }
+        },
+        {
+          "name": "Upcoming Deadlines",
+          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/api/dashboard/deadlines" }
+        },
+        {
+          "name": "Project Progress",
+          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/api/dashboard/project-progress" }
+        },
+        {
+          "name": "Team Performance",
+          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/api/dashboard/team-performance" }
+        }
+      ]
+    },
+    {
+      "name": "Audit Logs (Admin)",
+      "item": [
+        {
+          "name": "List Audit Logs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/audit-logs?page=1&limit=20&sortOrder=desc",
+            "description": "Optional filters: actorId, action, entityType, dateFrom, dateTo. Newest-first ordering is authoritative."
+          }
+        }
+      ]
+    }
+  ]
+}
