@@ -2,7 +2,7 @@
 
 ## Demo status
 
-The flow below is the required connected demonstration script. It has **not been executed** as part of creating this guide. Every step starts `NOT TESTED`; expected results describe acceptance criteria, not observed behavior.
+The browser-driven flow below remains `NOT TESTED`; expected results describe its acceptance criteria. On 2026-08-03, commit `74a694c` passed a connected API version of the role handoff against the Docker stack: all three logins, project/manager/member setup, task assignment and completion, comment, attachment upload/delete, dashboard progress, audit visibility, `401`/`403` checks, queries, and cleanup. This API evidence does not substitute for the remaining manual browser/UX pass.
 
 ## Local-only credentials
 
