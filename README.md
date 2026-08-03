@@ -143,7 +143,8 @@ Client variables are documented in `client/.env.example`:
 Real `.env` files are ignored. Never commit production credentials.
 
 The client port and API target are configurable so manual development can run beside another local
-service or the Docker stack. Keep `server/.env` `CLIENT_URL` aligned with the browser origin.
+service or the Docker stack. `CLIENT_URL` accepts a comma-separated explicit origin list; keep it
+aligned with the browser URL, including whether it uses `localhost` or `127.0.0.1`.
 
 ## Seed data and demo credentials
 
