@@ -47,7 +47,10 @@ temp/
 *.db
 
 # Uploaded files
-uploads/
+uploads/*
+!uploads/.gitkeep
+server/uploads/*
+!server/uploads/.gitkeep
 public/uploads/
 
 # Testing
