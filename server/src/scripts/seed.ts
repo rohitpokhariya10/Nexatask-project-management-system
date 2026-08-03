@@ -163,7 +163,6 @@ async function seed(): Promise<void> {
   console.info('Admin: admin@nexatask.demo');
   console.info('Project Manager: manager@nexatask.demo');
   console.info('Team Members: member1@nexatask.demo, member2@nexatask.demo, member3@nexatask.demo');
-  console.info(`Demo-only password: ${DEMO_PASSWORD}`);
 }
 
 seed()
