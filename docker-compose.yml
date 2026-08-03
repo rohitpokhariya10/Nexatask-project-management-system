@@ -6,8 +6,6 @@ services:
     restart: unless-stopped
     environment:
       MONGO_INITDB_DATABASE: countryedu_nexatask
-    ports:
-      - '127.0.0.1:27017:27017'
     volumes:
       - mongo-data:/data/db
     healthcheck:
@@ -60,7 +58,7 @@ services:
       server:
         condition: service_healthy
     healthcheck:
-      test: ['CMD', 'wget', '-qO-', 'http://localhost/healthz']
+      test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1/healthz']
       interval: 30s
       timeout: 5s
       retries: 5
