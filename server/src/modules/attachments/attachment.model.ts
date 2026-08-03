@@ -1,6 +1,12 @@
 import { Schema, model, type InferSchemaType } from 'mongoose';
 import { safeJsonTransform } from '../../shared/modelOptions.js';
 
+function safeAttachmentJsonTransform(document: unknown, returned: unknown) {
+  const result = safeJsonTransform(document, returned);
+  delete result.storedName;
+  return result;
+}
+
 const attachmentSchema = new Schema(
   {
     taskId: { type: Schema.Types.ObjectId, ref: 'Task', required: true, index: true },
@@ -13,8 +19,8 @@ const attachmentSchema = new Schema(
   },
   {
     timestamps: { createdAt: true, updatedAt: false },
-    toJSON: { transform: safeJsonTransform },
-    toObject: { transform: safeJsonTransform },
+    toJSON: { transform: safeAttachmentJsonTransform },
+    toObject: { transform: safeAttachmentJsonTransform },
   },
 );
 

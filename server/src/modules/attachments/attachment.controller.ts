@@ -10,9 +10,11 @@ import { deleteStoredFile, safeOriginalName, storedFilePath } from './storage.se
 export async function ensureAttachmentTaskAccess(
   request: Request,
   _response: Response,
+  next: NextFunction,
 ): Promise<void> {
   if (!request.user) throw new AppError('Authentication is required.', 401);
   await requireTaskAccess(request.params.taskId as string, request.user);
+  next();
 }
 
 export async function uploadAttachment(request: Request, response: Response): Promise<void> {

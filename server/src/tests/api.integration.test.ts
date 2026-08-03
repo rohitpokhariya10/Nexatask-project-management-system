@@ -414,6 +414,54 @@ describe('task assignment and status workflow', () => {
   });
 });
 
+describe('task collaboration', () => {
+  it('uploads, lists, and deletes attachments without exposing storage details', async () => {
+    const admin = await createUser('admin@example.com', 'ADMIN');
+    const manager = await createUser('manager@example.com', 'PROJECT_MANAGER');
+    const member = await createUser('member@example.com');
+    const project = await createProject(admin, manager.id, [member.id]);
+    const created = await request(app)
+      .post(`/api/projects/${project.id}/tasks`)
+      .set('Authorization', bearer(manager.token))
+      .send({ title: 'Review attachment', dueDate: '2026-08-10', assigneeId: member.id })
+      .expect(201);
+    const taskId = created.body.data.task.id as string;
+
+    const uploaded = await request(app)
+      .post(`/api/tasks/${taskId}/attachments`)
+      .set('Authorization', bearer(member.token))
+      .attach('file', Buffer.from('Safe test attachment.'), {
+        filename: 'review-notes.txt',
+        contentType: 'text/plain',
+      })
+      .expect(201);
+    expect(uploaded.body.data.attachment).toMatchObject({
+      originalName: 'review-notes.txt',
+      mimeType: 'text/plain',
+      size: 21,
+    });
+    expect(uploaded.body.data.attachment).not.toHaveProperty('storedName');
+    const attachmentId = uploaded.body.data.attachment.id as string;
+
+    const listed = await request(app)
+      .get(`/api/tasks/${taskId}/attachments`)
+      .set('Authorization', bearer(member.token))
+      .expect(200);
+    expect(listed.body.data).toHaveLength(1);
+    expect(listed.body.data[0]).not.toHaveProperty('storedName');
+
+    await request(app)
+      .delete(`/api/attachments/${attachmentId}`)
+      .set('Authorization', bearer(member.token))
+      .expect(200);
+    const afterDelete = await request(app)
+      .get(`/api/tasks/${taskId}/attachments`)
+      .set('Authorization', bearer(member.token))
+      .expect(200);
+    expect(afterDelete.body.data).toHaveLength(0);
+  });
+});
+
 describe('dashboard and persistent audit behavior', () => {
   it('returns expected role-scoped aggregation values and project progress', async () => {
     const admin = await createUser('admin@example.com', 'ADMIN');
