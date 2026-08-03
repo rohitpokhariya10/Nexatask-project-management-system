@@ -137,9 +137,13 @@ Server variables are documented in `server/.env.example`:
 Client variables are documented in `client/.env.example`:
 
 - `VITE_API_BASE_URL`
+- `VITE_API_PROXY_TARGET` and `VITE_DEV_PORT`
 - `VITE_MAX_UPLOAD_BYTES`
 
 Real `.env` files are ignored. Never commit production credentials.
+
+The client port and API target are configurable so manual development can run beside another local
+service or the Docker stack. Keep `server/.env` `CLIENT_URL` aligned with the browser origin.
 
 ## Seed data and demo credentials
 

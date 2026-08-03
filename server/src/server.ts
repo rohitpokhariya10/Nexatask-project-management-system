@@ -5,6 +5,7 @@ import { env } from './config/env.js';
 
 async function start(): Promise<void> {
   await connectDatabase();
+  console.info('MongoDB connected.');
   const server = http.createServer(app);
   server.listen(env.PORT, () => {
     console.info(`CountryEdu NexaTask API listening on port ${env.PORT}.`);
