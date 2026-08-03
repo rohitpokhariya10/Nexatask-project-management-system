@@ -173,6 +173,8 @@ Create example:
   "name": "Campus Content Refresh",
   "description": "Refresh program pages and admission guidance.",
   "status": "PLANNING",
+  "managerId": "66a222222222222222222222",
+  "memberIds": [],
   "startDate": "2026-08-04T00:00:00.000Z",
   "deadline": "2026-08-18T00:00:00.000Z"
 }

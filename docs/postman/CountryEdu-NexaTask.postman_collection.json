@@ -197,7 +197,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json", "type": "text" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Campus Content Refresh\",\n  \"description\": \"Refresh program pages and admission guidance.\",\n  \"status\": \"PLANNING\",\n  \"startDate\": \"2026-08-04T00:00:00.000Z\",\n  \"deadline\": \"2026-08-18T00:00:00.000Z\"\n}",
+              "raw": "{\n  \"name\": \"Campus Content Refresh\",\n  \"description\": \"Refresh program pages and admission guidance.\",\n  \"status\": \"PLANNING\",\n  \"managerId\": \"{{userId}}\",\n  \"memberIds\": [],\n  \"startDate\": \"2026-08-04T00:00:00.000Z\",\n  \"deadline\": \"2026-08-18T00:00:00.000Z\"\n}",
               "options": { "raw": { "language": "json" } }
             },
             "url": "{{baseUrl}}/api/projects"
