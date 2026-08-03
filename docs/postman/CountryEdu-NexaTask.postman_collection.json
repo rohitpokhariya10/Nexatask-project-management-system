@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "c8569b22-24e7-4e94-ae68-c8fb11c617de",
     "name": "CountryEdu NexaTask",
-    "description": "Target REST API collection for CountryEdu NexaTask. Runtime behavior remains unverified until the collection is executed against the implemented API. Run Auth / Login first to store accessToken. Set resource ID variables as records are created or selected. Demo credentials are local-development only.",
+    "description": "Postman Collection v2.1 for CountryEdu NexaTask. The only ordered runner is the non-destructive `Seeded Smoke Workflow` folder. Exact prerequisite from the repository root: start local MongoDB, create the client/server `.env` files, run `npm run seed`, then run `npm run dev`; the seed must finish successfully immediately before the smoke run. Run it with `npx newman run docs/postman/CountryEdu-NexaTask.postman_collection.json --folder \"Seeded Smoke Workflow\"`. The remaining folders cover all 38 implemented API routes plus Swagger UI as a reference request catalog. They are not an ordered or end-to-end runner; several require IDs and intentionally include mutations or deletions. Demo credentials are local-development only.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
@@ -22,7 +22,8 @@
         "type": "text/javascript",
         "exec": [
           "pm.test('Response uses JSON when a body is present', function () {",
-          "  if (pm.response.text()) {",
+          "  var nonJsonRequests = ['Swagger UI', 'Download Attachment'];",
+          "  if (nonJsonRequests.indexOf(pm.info.requestName) === -1 && pm.response.text()) {",
           "    pm.expect(pm.response.headers.get('Content-Type') || '').to.include('application/json');",
           "  }",
           "});"
@@ -41,6 +42,218 @@
   ],
   "item": [
     {
+      "name": "Seeded Smoke Workflow",
+      "description": "Ordered local smoke workflow. It reads health and seeded Admin data without creating, updating, or deleting users, projects, tasks, comments, or attachments. Login creates the application's normal USER_LOGIN audit record. Run this folder only after the exact seed prerequisite in the collection description.",
+      "item": [
+        {
+          "name": "01 - Health",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.collectionVariables.unset('accessToken');"]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Health returns HTTP 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Health reports a connected database', function () {",
+                  "  var body = pm.response.json();",
+                  "  pm.expect(body.success).to.eql(true);",
+                  "  pm.expect(body.data).to.be.an('object');",
+                  "  pm.expect(body.data.status).to.eql('ok');",
+                  "  pm.expect(body.data.database).to.eql('connected');",
+                  "  pm.expect(body.data.uptimeSeconds).to.be.a('number');",
+                  "  pm.expect(body.data.timestamp).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/health",
+            "description": "Confirms the API process and local MongoDB are ready before authentication."
+          }
+        },
+        {
+          "name": "02 - Admin Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var body;",
+                  "pm.test('Seeded Admin login returns HTTP 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Login returns the seeded Admin and an access token', function () {",
+                  "  body = pm.response.json();",
+                  "  pm.expect(body.success).to.eql(true);",
+                  "  pm.expect(body.message).to.eql('Login successful.');",
+                  "  pm.expect(body.data).to.be.an('object');",
+                  "  pm.expect(body.data.user).to.be.an('object');",
+                  "  pm.expect(body.data.user.email).to.eql('admin@nexatask.demo');",
+                  "  pm.expect(body.data.user.role).to.eql('ADMIN');",
+                  "  pm.expect(body.data.user.isActive).to.eql(true);",
+                  "  pm.expect(body.data.user).not.to.have.property('passwordHash');",
+                  "  pm.expect(body.data.accessToken).to.be.a('string').and.not.empty;",
+                  "});",
+                  "if (body && body.data && body.data.accessToken) {",
+                  "  pm.collectionVariables.set('accessToken', body.data.accessToken);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@nexatask.demo\",\n  \"password\": \"Demo@12345\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/api/auth/login",
+            "description": "Logs in with the development-seed Admin and stores data.accessToken as the collection accessToken."
+          }
+        },
+        {
+          "name": "03 - Current User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Current User returns HTTP 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Current User is the safe seeded Admin', function () {",
+                  "  var body = pm.response.json();",
+                  "  pm.expect(body.success).to.eql(true);",
+                  "  pm.expect(body.data).to.be.an('object');",
+                  "  pm.expect(body.data.user).to.be.an('object');",
+                  "  pm.expect(body.data.user.id).to.be.a('string').and.not.empty;",
+                  "  pm.expect(body.data.user.email).to.eql('admin@nexatask.demo');",
+                  "  pm.expect(body.data.user.role).to.eql('ADMIN');",
+                  "  pm.expect(body.data.user.isActive).to.eql(true);",
+                  "  pm.expect(body.data.user).not.to.have.property('passwordHash');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/me",
+            "description": "Uses the accessToken saved by the preceding Admin Login request."
+          }
+        },
+        {
+          "name": "04 - Dashboard Overview",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Dashboard Overview returns HTTP 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Dashboard Overview matches the fresh development seed', function () {",
+                  "  var body = pm.response.json();",
+                  "  pm.expect(body.success).to.eql(true);",
+                  "  pm.expect(body.data).to.be.an('object');",
+                  "  pm.expect(body.data.projects).to.be.an('object');",
+                  "  pm.expect(body.data.projects.total).to.eql(2);",
+                  "  pm.expect(body.data.projects.active).to.eql(1);",
+                  "  pm.expect(body.data.projects.completed).to.eql(0);",
+                  "  pm.expect(body.data.tasks).to.be.an('object');",
+                  "  pm.expect(body.data.tasks.total).to.eql(5);",
+                  "  pm.expect(body.data.tasks.todo).to.eql(2);",
+                  "  pm.expect(body.data.tasks.inProgress).to.eql(2);",
+                  "  pm.expect(body.data.tasks.completed).to.eql(1);",
+                  "  pm.expect(body.data.tasks.pending).to.eql(4);",
+                  "  pm.expect(body.data.completedVsPending).to.be.an('array').with.lengthOf(2);",
+                  "  pm.expect(body.data.tasksByStatus).to.be.an('array').with.lengthOf(3);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/dashboard/overview",
+            "description": "Verifies the Admin-scoped aggregate totals created by the development seed."
+          }
+        },
+        {
+          "name": "05 - Admin Audit Logs",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Admin Audit Logs returns HTTP 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Admin Audit Logs includes the workflow login event', function () {",
+                  "  var body = pm.response.json();",
+                  "  pm.expect(body.success).to.eql(true);",
+                  "  pm.expect(body.data).to.be.an('array').that.is.not.empty;",
+                  "  pm.expect(body.data[0].action).to.eql('USER_LOGIN');",
+                  "  pm.expect(body.data[0].entityType).to.eql('User');",
+                  "  pm.expect(body.data[0].summary).to.eql('User logged in successfully.');",
+                  "  pm.expect(body.pagination).to.be.an('object');",
+                  "  pm.expect(body.pagination.page).to.eql(1);",
+                  "  pm.expect(body.pagination.totalItems).to.be.at.least(1);",
+                  "  body.data.forEach(function (entry) {",
+                  "    pm.expect(entry.action).to.eql('USER_LOGIN');",
+                  "    pm.expect(entry.entityType).to.eql('User');",
+                  "  });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/audit-logs?page=1&limit=20&action=USER_LOGIN&entityType=User",
+            "description": "Confirms the seeded Admin can read safe, filtered audit records and observes the login performed by this workflow."
+          }
+        }
+      ]
+    },
+    {
       "name": "Platform",
       "item": [
         {
@@ -50,7 +263,7 @@
             "method": "GET",
             "header": [],
             "url": "{{baseUrl}}/api/health",
-            "description": "Safe process/database readiness target."
+            "description": "Safe process/database readiness endpoint."
           }
         },
         {
@@ -60,7 +273,7 @@
             "method": "GET",
             "header": [],
             "url": "{{baseUrl}}/api/docs",
-            "description": "Swagger/OpenAPI UI target. Postman may display HTML."
+            "description": "Swagger/OpenAPI UI endpoint. Postman may display HTML."
           }
         }
       ]
@@ -95,7 +308,7 @@
                   "var body = {};",
                   "try { body = pm.response.json(); } catch (error) { console.warn('Login response was not JSON'); }",
                   "var data = body.data || {};",
-                  "var token = data.accessToken || data.token;",
+                  "var token = data.accessToken;",
                   "pm.test('Login returns an access token', function () { pm.expect(token).to.be.a('string').and.not.empty; });",
                   "if (token) { pm.collectionVariables.set('accessToken', token); }"
                 ]
@@ -112,7 +325,7 @@
               "options": { "raw": { "language": "json" } }
             },
             "url": "{{baseUrl}}/api/auth/login",
-            "description": "Uses local demo credentials and stores data.accessToken (or data.token) as collection variable accessToken."
+            "description": "Uses local demo credentials and stores data.accessToken as collection variable accessToken."
           }
         },
         {
@@ -134,7 +347,7 @@
             "method": "GET",
             "header": [],
             "url": "{{baseUrl}}/api/users?page=1&limit=10&search=&role=TEAM_MEMBER&isActive=true&sortBy=createdAt&sortOrder=desc",
-            "description": "Remove optional blank filters if the implementation rejects empty values. Supports backend search/filter/sort/pagination."
+            "description": "Supports backend search, role/status filters, allow-listed sorting, and pagination."
           }
         },
         {
@@ -213,8 +426,21 @@
           }
         },
         {
+          "name": "List Eligible Project Members",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/projects/{{projectId}}/eligible-members?page=1&limit=20&search=",
+            "description": "Admin or the assigned Project Manager can list active TEAM_MEMBER users not already assigned to the project."
+          }
+        },
+        {
           "name": "Get Project",
-          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/api/projects/{{projectId}}" }
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/projects/{{projectId}}"
+          }
         },
         {
           "name": "Update Project",
@@ -231,7 +457,11 @@
         },
         {
           "name": "Delete Project",
-          "request": { "method": "DELETE", "header": [], "url": "{{baseUrl}}/api/projects/{{projectId}}" }
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/projects/{{projectId}}"
+          }
         },
         {
           "name": "Assign Project Manager",
@@ -261,7 +491,11 @@
         },
         {
           "name": "Remove Project Member",
-          "request": { "method": "DELETE", "header": [], "url": "{{baseUrl}}/api/projects/{{projectId}}/members/{{userId}}" }
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/projects/{{projectId}}/members/{{userId}}"
+          }
         }
       ]
     },
@@ -306,7 +540,11 @@
         },
         {
           "name": "My Tasks",
-          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/api/tasks/my-tasks?page=1&limit=10&sortBy=dueDate&sortOrder=asc" }
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/tasks/my-tasks?page=1&limit=10&sortBy=dueDate&sortOrder=asc"
+          }
         },
         {
           "name": "Get Task",
@@ -389,7 +627,11 @@
         },
         {
           "name": "List Task Comments",
-          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/api/tasks/{{taskId}}/comments" }
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/tasks/{{taskId}}/comments"
+          }
         },
         {
           "name": "Update Comment",
@@ -406,7 +648,11 @@
         },
         {
           "name": "Delete Comment",
-          "request": { "method": "DELETE", "header": [], "url": "{{baseUrl}}/api/comments/{{commentId}}" }
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/comments/{{commentId}}"
+          }
         }
       ]
     },
@@ -435,7 +681,12 @@
             "body": {
               "mode": "formdata",
               "formdata": [
-                { "key": "file", "type": "file", "src": "", "description": "Choose a small allowed local demo file in Postman." }
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "",
+                  "description": "Choose a small allowed local demo file in Postman."
+                }
               ]
             },
             "url": "{{baseUrl}}/api/tasks/{{taskId}}/attachments",
@@ -444,11 +695,28 @@
         },
         {
           "name": "List Task Attachments",
-          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/api/tasks/{{taskId}}/attachments" }
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/tasks/{{taskId}}/attachments"
+          }
+        },
+        {
+          "name": "Download Attachment",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/attachments/{{attachmentId}}/download",
+            "description": "Returns authenticated file bytes using the original display filename."
+          }
         },
         {
           "name": "Delete Attachment",
-          "request": { "method": "DELETE", "header": [], "url": "{{baseUrl}}/api/attachments/{{attachmentId}}" }
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/attachments/{{attachmentId}}"
+          }
         }
       ]
     },
@@ -465,11 +733,19 @@
         },
         {
           "name": "Project Progress",
-          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/api/dashboard/project-progress" }
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/dashboard/project-progress"
+          }
         },
         {
           "name": "Team Performance",
-          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/api/dashboard/team-performance" }
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/dashboard/team-performance"
+          }
         }
       ]
     },
@@ -481,8 +757,8 @@
           "request": {
             "method": "GET",
             "header": [],
-            "url": "{{baseUrl}}/api/audit-logs?page=1&limit=20&sortOrder=desc",
-            "description": "Optional filters: actorId, action, entityType, dateFrom, dateTo. Newest-first ordering is authoritative."
+            "url": "{{baseUrl}}/api/audit-logs?page=1&limit=20",
+            "description": "Optional filters: actorId, allow-listed action, allow-listed entityType, dateFrom, and dateTo. Results are always newest first."
           }
         }
       ]
