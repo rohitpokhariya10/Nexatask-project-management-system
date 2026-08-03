@@ -167,14 +167,16 @@ run MongoDB, the API, and the web client:
 
 ```bash
 export JWT_SECRET="$(openssl rand -base64 32)"
-docker compose up --build
+docker compose up --build -d
+docker compose --profile tools run --rm seed
 ```
 
 Service health checks and persisted MongoDB/upload volumes are defined in `docker-compose.yml`.
-To load the demo records into the running Compose database:
+Open `http://localhost:5173` after the containers become healthy. To inspect or stop the stack:
 
 ```bash
-docker compose --profile tools run --rm seed
+docker compose ps
+docker compose down
 ```
 
 See [Deployment](docs/DEPLOYMENT.md) for production considerations.

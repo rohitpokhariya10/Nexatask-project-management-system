@@ -51,10 +51,12 @@ The target Compose topology contains:
 Run:
 
 ```bash
-docker compose up --build
+export JWT_SECRET="$(openssl rand -base64 32)"
+docker compose up --build -d
+docker compose --profile tools run --rm seed
 ```
 
-Then verify health, Swagger, all three logins, upload persistence across a server-container restart, and graceful shutdown. `depends_on` startup order alone does not prove MongoDB readiness; use health checks and retry-safe database connection logic. Docker has not been run as part of creating this guide.
+Then verify health, Swagger, all three logins, upload persistence across a server-container restart, and graceful shutdown. `depends_on` startup order alone does not prove MongoDB readiness; this Compose stack uses health checks and retry-safe database connection logic.
 
 ## Hosted deployment reference path
 
