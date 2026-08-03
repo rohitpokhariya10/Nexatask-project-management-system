@@ -25,7 +25,13 @@
     "prettier": "^3.6.2"
   },
   "engines": {
-    "node": ">=20.0.0",
+    "node": ">=20.19.0",
     "npm": ">=10.0.0"
+  },
+  "allowScripts": {
+    "esbuild@0.28.1": true,
+    "esbuild@0.21.5": true,
+    "mongodb-memory-server@10.4.3": true,
+    "bcrypt@6.0.0": true
   }
 }
