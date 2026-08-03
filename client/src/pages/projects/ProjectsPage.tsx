@@ -19,21 +19,41 @@ import { useAuth } from '../../features/auth/auth-context';
 import { getApiError, request, requestPaginated } from '../../lib/api';
 import { entityId, formatDate, projectStatusLabels } from '../../lib/utils';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
-import type { Project, ProjectStatus } from '../../types/api';
+import type { Project, ProjectStatus, User } from '../../types/api';
 
 export function ProjectsPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<ProjectStatus | ''>('');
+  const [managerId, setManagerId] = useState('');
+  const [deadlineFrom, setDeadlineFrom] = useState('');
+  const [deadlineTo, setDeadlineTo] = useState('');
   const [sort, setSort] = useState('deadline:asc');
   const [page, setPage] = useState(1);
   const [deleteProject, setDeleteProject] = useState<Project | null>(null);
   const debouncedSearch = useDebouncedValue(search);
   const [sortBy, sortOrder] = sort.split(':');
 
+  const managers = useQuery({
+    queryKey: ['users', 'project-filter-managers'],
+    queryFn: () =>
+      requestPaginated<User>({
+        url: '/users',
+        params: { page: 1, limit: 100, isActive: true, sortBy: 'name', sortOrder: 'asc' },
+      }),
+    enabled: user?.role === 'ADMIN',
+  });
+  const managerOptions =
+    managers.data?.items.filter(
+      (candidate) => candidate.role === 'ADMIN' || candidate.role === 'PROJECT_MANAGER',
+    ) ?? [];
+
   const projects = useQuery({
-    queryKey: ['projects', { page, search: debouncedSearch, status, sort }],
+    queryKey: [
+      'projects',
+      { page, search: debouncedSearch, status, managerId, deadlineFrom, deadlineTo, sort },
+    ],
     queryFn: () =>
       requestPaginated<Project>({
         url: '/projects',
@@ -42,6 +62,9 @@ export function ProjectsPage() {
           limit: 10,
           search: debouncedSearch || undefined,
           status: status || undefined,
+          managerId: managerId || undefined,
+          deadlineFrom: deadlineFrom || undefined,
+          deadlineTo: deadlineTo || undefined,
           sortBy,
           sortOrder,
         },
@@ -67,7 +90,7 @@ export function ProjectsPage() {
     action();
     setPage(1);
   };
-  const hasFilters = Boolean(debouncedSearch || status);
+  const hasFilters = Boolean(debouncedSearch || status || managerId || deadlineFrom || deadlineTo);
   const managerLabel = (project: Project) =>
     project.manager?.name ??
     (entityId(project.managerId) === user?.id ? user.name : 'Project manager');
@@ -90,8 +113,8 @@ export function ProjectsPage() {
       />
 
       <Card className="mb-5 p-4">
-        <div className="grid gap-3 md:grid-cols-[minmax(240px,1fr)_190px_210px_auto]">
-          <label className="relative">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <label className="relative sm:col-span-2 xl:col-span-1">
             <span className="sr-only">Search projects</span>
             <Search className="pointer-events-none absolute left-3.5 top-3.5 h-4 w-4 text-slate-400" />
             <input
@@ -99,6 +122,46 @@ export function ProjectsPage() {
               value={search}
               onChange={(event) => updateFilter(() => setSearch(event.target.value))}
               placeholder="Search name or description…"
+            />
+          </label>
+          {user?.role === 'ADMIN' ? (
+            <select
+              className="field"
+              aria-label="Project manager filter"
+              value={managerId}
+              disabled={managers.isPending}
+              onChange={(event) => updateFilter(() => setManagerId(event.target.value))}
+            >
+              <option value="">
+                {managers.isPending ? 'Loading managers…' : 'All project managers'}
+              </option>
+              {managerOptions.map((manager) => (
+                <option key={manager.id} value={manager.id}>
+                  {manager.name}
+                </option>
+              ))}
+            </select>
+          ) : null}
+          <label>
+            <span className="sr-only">Project deadline from</span>
+            <input
+              className="field"
+              type="date"
+              aria-label="Project deadline from"
+              max={deadlineTo || undefined}
+              value={deadlineFrom}
+              onChange={(event) => updateFilter(() => setDeadlineFrom(event.target.value))}
+            />
+          </label>
+          <label>
+            <span className="sr-only">Project deadline to</span>
+            <input
+              className="field"
+              type="date"
+              aria-label="Project deadline to"
+              min={deadlineFrom || undefined}
+              value={deadlineTo}
+              onChange={(event) => updateFilter(() => setDeadlineTo(event.target.value))}
             />
           </label>
           <label>
@@ -137,13 +200,16 @@ export function ProjectsPage() {
               onClick={() => {
                 setSearch('');
                 setStatus('');
+                setManagerId('');
+                setDeadlineFrom('');
+                setDeadlineTo('');
                 setPage(1);
               }}
             >
               Clear
             </Button>
           ) : (
-            <span className="hidden items-center justify-center text-slate-400 md:flex">
+            <span className="hidden items-center justify-center text-slate-400 xl:flex">
               <SlidersHorizontal className="h-5 w-5" aria-hidden="true" />
             </span>
           )}
@@ -175,6 +241,10 @@ export function ProjectsPage() {
                 onClick={() => {
                   setSearch('');
                   setStatus('');
+                  setManagerId('');
+                  setDeadlineFrom('');
+                  setDeadlineTo('');
+                  setPage(1);
                 }}
               >
                 Reset filters

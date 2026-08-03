@@ -19,6 +19,9 @@ import {
 } from '../../lib/utils';
 import type { Project, Task, TaskPriority, TaskStatus } from '../../types/api';
 
+type TaskSortBy = 'title' | 'status' | 'priority' | 'dueDate' | 'createdAt' | 'updatedAt';
+type TaskSortValue = `${TaskSortBy}:${'asc' | 'desc'}`;
+
 export function TaskListPage({ mode = 'project' }: { mode?: 'project' | 'mine' }) {
   const { projectId = '' } = useParams();
   const { user } = useAuth();
@@ -26,9 +29,14 @@ export function TaskListPage({ mode = 'project' }: { mode?: 'project' | 'mine' }
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<TaskStatus | ''>('');
   const [priority, setPriority] = useState<TaskPriority | ''>('');
+  const [assigneeId, setAssigneeId] = useState('');
+  const [dueFrom, setDueFrom] = useState('');
+  const [dueTo, setDueTo] = useState('');
+  const [sort, setSort] = useState<TaskSortValue>('dueDate:asc');
   const [page, setPage] = useState(1);
   const debouncedSearch = useDebouncedValue(search);
   const isMine = mode === 'mine';
+  const [sortBy, sortOrder] = sort.split(':') as [TaskSortBy, 'asc' | 'desc'];
 
   const project = useQuery({
     queryKey: ['project', projectId],
@@ -39,7 +47,7 @@ export function TaskListPage({ mode = 'project' }: { mode?: 'project' | 'mine' }
     queryKey: [
       isMine ? 'my-tasks' : 'project-tasks',
       projectId,
-      { page, search: debouncedSearch, status, priority },
+      { page, search: debouncedSearch, status, priority, assigneeId, dueFrom, dueTo, sort },
     ],
     queryFn: () =>
       requestPaginated<Task>({
@@ -50,8 +58,11 @@ export function TaskListPage({ mode = 'project' }: { mode?: 'project' | 'mine' }
           search: debouncedSearch || undefined,
           status: status || undefined,
           priority: priority || undefined,
-          sortBy: 'dueDate',
-          sortOrder: 'asc',
+          assigneeId: !isMine ? assigneeId || undefined : undefined,
+          dueFrom: dueFrom || undefined,
+          dueTo: dueTo || undefined,
+          sortBy,
+          sortOrder,
         },
       }),
   });
@@ -74,11 +85,20 @@ export function TaskListPage({ mode = 'project' }: { mode?: 'project' | 'mine' }
     action();
     setPage(1);
   };
-  const projectMembers = project.data?.members ?? [];
+  const projectMembers =
+    project.data?.members ??
+    project.data?.memberIds.filter(
+      (member): member is Exclude<typeof member, string> => typeof member !== 'string',
+    ) ??
+    [];
+  const activeProjectMembers = projectMembers.filter((member) => member.isActive);
   const memberName = (idValue: Task['assigneeId']) =>
     projectMembers.find((member) => member.id === entityId(idValue))?.name ??
     (typeof idValue === 'object' && idValue ? idValue.name : idValue ? 'Assigned' : 'Unassigned');
   const canCreate = Boolean(user && project.data && canManageProject(user, project.data));
+  const hasFilters = Boolean(
+    search || status || priority || (!isMine && assigneeId) || dueFrom || dueTo,
+  );
 
   return (
     <div>
@@ -113,8 +133,8 @@ export function TaskListPage({ mode = 'project' }: { mode?: 'project' | 'mine' }
       />
 
       <Card className="mb-5 p-4">
-        <div className="grid gap-3 md:grid-cols-[1fr_190px_180px_auto]">
-          <label className="relative">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <label className="relative sm:col-span-2">
             <span className="sr-only">Search tasks</span>
             <Search className="pointer-events-none absolute left-3.5 top-3.5 h-4 w-4 text-slate-400" />
             <input
@@ -148,13 +168,67 @@ export function TaskListPage({ mode = 'project' }: { mode?: 'project' | 'mine' }
             <option value="MEDIUM">Medium priority</option>
             <option value="HIGH">High priority</option>
           </select>
-          {search || status || priority ? (
+          {!isMine ? (
+            <select
+              className="field"
+              aria-label="Task assignee"
+              value={assigneeId}
+              disabled={project.isPending}
+              onChange={(event) => resetPage(() => setAssigneeId(event.target.value))}
+            >
+              <option value="">All assignees</option>
+              {activeProjectMembers.map((member) => (
+                <option value={member.id} key={member.id}>
+                  {member.name}
+                </option>
+              ))}
+            </select>
+          ) : null}
+          <label>
+            <span className="sr-only">Task due from</span>
+            <input
+              className="field"
+              type="date"
+              value={dueFrom}
+              max={dueTo || undefined}
+              onChange={(event) => resetPage(() => setDueFrom(event.target.value))}
+            />
+          </label>
+          <label>
+            <span className="sr-only">Task due to</span>
+            <input
+              className="field"
+              type="date"
+              value={dueTo}
+              min={dueFrom || undefined}
+              onChange={(event) => resetPage(() => setDueTo(event.target.value))}
+            />
+          </label>
+          <select
+            className="field"
+            aria-label="Sort tasks"
+            value={sort}
+            onChange={(event) => resetPage(() => setSort(event.target.value as TaskSortValue))}
+          >
+            <option value="dueDate:asc">Due date · soonest</option>
+            <option value="dueDate:desc">Due date · latest</option>
+            <option value="createdAt:desc">Newest created</option>
+            <option value="createdAt:asc">Oldest created</option>
+            <option value="title:asc">Title · A–Z</option>
+            <option value="title:desc">Title · Z–A</option>
+            <option value="priority:desc">Priority · high first</option>
+            <option value="status:asc">Status</option>
+          </select>
+          {hasFilters ? (
             <Button
               variant="ghost"
               onClick={() => {
                 setSearch('');
                 setStatus('');
                 setPriority('');
+                setAssigneeId('');
+                setDueFrom('');
+                setDueTo('');
                 setPage(1);
               }}
             >
@@ -178,14 +252,14 @@ export function TaskListPage({ mode = 'project' }: { mode?: 'project' | 'mine' }
           icon={<ClipboardCheck className="h-6 w-6" />}
           title="No tasks found"
           description={
-            search || status || priority
+            hasFilters
               ? 'Try changing your search or filters.'
               : isMine
                 ? 'When a task is assigned to you, it will appear here.'
                 : 'Start by creating the first task for this project.'
           }
           action={
-            !isMine && canCreate && !search && !status && !priority ? (
+            !isMine && canCreate && !hasFilters ? (
               <Link to={`/projects/${projectId}/tasks/new`}>
                 <Button>
                   <Plus className="h-4 w-4" /> Create task

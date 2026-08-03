@@ -17,17 +17,22 @@ interface StatusChange {
   nextActive: boolean;
 }
 
+type UserSortBy = 'name' | 'email' | 'role' | 'isActive' | 'createdAt';
+type UserSortValue = `${UserSortBy}:${'asc' | 'desc'}`;
+
 export function UsersPage() {
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, refreshUser } = useAuth();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [role, setRole] = useState<Role | ''>('');
   const [active, setActive] = useState('');
+  const [sort, setSort] = useState<UserSortValue>('createdAt:desc');
   const [page, setPage] = useState(1);
   const [statusChange, setStatusChange] = useState<StatusChange | null>(null);
   const debouncedSearch = useDebouncedValue(search);
+  const [sortBy, sortOrder] = sort.split(':') as [UserSortBy, 'asc' | 'desc'];
   const users = useQuery({
-    queryKey: ['users', { page, search: debouncedSearch, role, active }],
+    queryKey: ['users', { page, search: debouncedSearch, role, active, sort }],
     queryFn: () =>
       requestPaginated<User>({
         url: '/users',
@@ -37,8 +42,8 @@ export function UsersPage() {
           search: debouncedSearch || undefined,
           role: role || undefined,
           isActive: active || undefined,
-          sortBy: 'createdAt',
-          sortOrder: 'desc',
+          sortBy,
+          sortOrder,
         },
       }),
   });
@@ -49,9 +54,10 @@ export function UsersPage() {
         { method: 'PATCH', url: `/users/${userId}/role`, data: { role: nextRole } },
         'user',
       ),
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       toast.success('User role updated.');
       refresh();
+      if (variables.userId === currentUser?.id) void refreshUser();
     },
     onError: (error) => toast.error(getApiError(error, 'Unable to update the role.')),
   });
@@ -81,8 +87,8 @@ export function UsersPage() {
         description="Control roles and account access. Your own active session is protected from accidental deactivation."
       />
       <Card className="mb-5 p-4">
-        <div className="grid gap-3 md:grid-cols-[1fr_210px_190px_auto]">
-          <label className="relative">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+          <label className="relative sm:col-span-2 xl:col-span-1">
             <span className="sr-only">Search users</span>
             <Search className="pointer-events-none absolute left-3.5 top-3.5 h-4 w-4 text-slate-400" />
             <input
@@ -112,6 +118,21 @@ export function UsersPage() {
             <option value="">All accounts</option>
             <option value="true">Active</option>
             <option value="false">Inactive</option>
+          </select>
+          <select
+            className="field"
+            aria-label="Sort users"
+            value={sort}
+            onChange={(event) => filter(() => setSort(event.target.value as UserSortValue))}
+          >
+            <option value="createdAt:desc">Newest joined</option>
+            <option value="createdAt:asc">Oldest joined</option>
+            <option value="name:asc">Name · A–Z</option>
+            <option value="name:desc">Name · Z–A</option>
+            <option value="email:asc">Email · A–Z</option>
+            <option value="role:asc">Role</option>
+            <option value="isActive:desc">Active first</option>
+            <option value="isActive:asc">Inactive first</option>
           </select>
           {search || role || active ? (
             <Button
