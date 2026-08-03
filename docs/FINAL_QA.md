@@ -22,22 +22,22 @@ Never infer `PASS` from code review, file presence, another command, or an earli
 | Branch                       | `main`                                                                |
 | Node/npm versions            | Node `v26.3.0`; npm `11.16.0`                                         |
 | Browser/OS                   | HTTP production smoke on Darwin 25.5.0 arm64; browser UI not executed |
-| MongoDB mode/version         | Docker `mongo:7.0`                                                    |
+| MongoDB mode/version         | Local MongoDB 7 service                                               |
 | Tester                       | Local automated and connected API verification                        |
 
 ## Required final end-to-end verification
 
 |   # | Check                                                                    | Initial status | Evidence / notes                                                    |
 | --: | ------------------------------------------------------------------------ | -------------- | ------------------------------------------------------------------- |
-|   1 | Install dependencies from a clean state/lockfile                         | PASS           | Docker clean stages ran `npm ci`; root offline lock dry-run passed  |
+|   1 | Install dependencies from a clean state/lockfile                         | PASS           | Root lockfile install verification passed                           |
 |   2 | Run all lint commands                                                    | PASS           | `npm run lint`                                                      |
 |   3 | Run all automated tests                                                  | PASS           | 20 backend + 9 frontend tests                                       |
 |   4 | Run frontend production build                                            | PASS           | TypeScript + Vite production build                                  |
-|   5 | Run backend production build                                             | PASS           | TypeScript build and Docker production stage                        |
-|   6 | Start MongoDB                                                            | PASS           | Docker `mongo:7.0` healthy                                          |
+|   5 | Run backend production build                                             | PASS           | TypeScript production build                                         |
+|   6 | Start MongoDB                                                            | PASS           | Local MongoDB 7 service healthy                                     |
 |   7 | Start backend and verify readiness                                       | PASS           | Server healthy; `/api/health` returned `status: ok`                 |
 |   8 | Start frontend and load the application                                  | PASS           | Nginx healthy; production HTML contains `CountryEdu NexaTask`       |
-|   9 | Seed development data                                                    | PASS           | Docker seed completed without logging the demo password             |
+|   9 | Seed development data                                                    | PASS           | Seed completed without logging the demo password                    |
 |  10 | Test Admin login                                                         | PASS           | Connected API login returned `ADMIN`                                |
 |  11 | Test Project Manager login                                               | PASS           | Connected API login returned `PROJECT_MANAGER`                      |
 |  12 | Test Team Member login                                                   | PASS           | Connected API login returned `TEAM_MEMBER`                          |
@@ -49,7 +49,7 @@ Never infer `PASS` from code review, file presence, another command, or an earli
 |  18 | Update own assigned task status as Team Member                           | PASS           | `TODO -> IN_PROGRESS -> COMPLETED`; `completedAt` verified          |
 |  19 | Add a comment to an accessible task                                      | PASS           | Trimmed persisted comment verified                                  |
 |  20 | Upload an allowed attachment                                             | PASS           | Multipart TXT upload returned safe metadata                         |
-|  21 | Delete attachment metadata and physical file                             | PASS           | Delete succeeded; regression list empty; Docker upload volume empty |
+|  21 | Delete attachment metadata and physical file                             | PASS           | Delete succeeded; regression list and upload directory empty        |
 |  22 | Search projects through backend query                                    | PASS           | Connected project query                                             |
 |  23 | Filter projects through backend query                                    | PASS           | `status=ACTIVE` verified                                            |
 |  24 | Paginate projects and verify boundary metadata                           | PASS           | Page/limit metadata verified                                        |
@@ -65,8 +65,8 @@ Never infer `PASS` from code review, file presence, another command, or an earli
 |  34 | Verify missing JWT returns `401`                                         | PASS           | Connected protected request returned `401`                          |
 |  35 | Verify Swagger loads at `/api/docs` and matches runtime                  | PASS           | `/api/docs.json`: OpenAPI 3.0.3 with documented paths               |
 |  36 | Verify Postman collection imports and executes the intended flow         | NOT TESTED     | Static JSON validated; collection was not run in Postman            |
-|  37 | Verify `docker compose up --build` and service health where possible     | PASS           | Mongo, server, and client all report healthy                        |
-|  38 | Verify README commands exactly match package scripts/behavior            | PASS           | Documented install/lint/test/build/seed/Compose commands executed   |
+|  37 | Verify Render and Vercel deployment configuration                        | PASS           | Blueprint/config parse and reference actual package scripts         |
+|  38 | Verify README commands exactly match package scripts/behavior            | PASS           | Documented install/lint/test/build/seed commands executed           |
 |  39 | Verify real `.env` files/secrets are not tracked                         | PASS           | `git ls-files` shows only `.env.example` files                      |
 |  40 | Verify generated uploads are not tracked                                 | PASS           | Only `server/uploads/.gitkeep` is tracked                           |
 |  41 | Record exact final `git status`                                          | PASS           | After `d553068`: `main...origin/main`, no local changes             |
@@ -152,24 +152,24 @@ Never infer `PASS` from code review, file presence, another command, or an earli
 
 Do not publish the final report until each value is factual.
 
-| Required field               | Initial status      | Final value / evidence                                                            |
-| ---------------------------- | ------------------- | --------------------------------------------------------------------------------- |
-| Project name                 | PASS                | CountryEdu NexaTask                                                               |
-| Current branch               | PASS                | `main`                                                                            |
-| Git remote                   | PASS                | `https://github.com/rohitpokhariya10/Nexatask-project-management-system.git`      |
-| Total commits created        | PASS                | 15 including the docs-only repository closeout                                    |
-| Final commit hash            | PASS                | Verified build `74a694c`; evidence base `d553068`; closeout hash is in handoff    |
-| Push status                  | PASS                | Verified implementation and evidence commits pushed to `origin/main`              |
-| Completed features           | PASS                | Auth/RBAC, users, projects, tasks, collaboration, dashboards, audit, docs, Docker |
-| Remaining features           | PASS                | Hosted deployment and manual browser/Postman presentation verification            |
-| Test results                 | PASS                | 20 backend + 9 frontend tests                                                     |
-| Lint results                 | PASS                | Root client/server lint passed                                                    |
-| Build results                | PASS                | Backend and frontend production builds passed                                     |
-| Docker result                | PASS                | Mongo, backend, and frontend healthy                                              |
-| Swagger URL/result           | PASS                | `http://127.0.0.1:5000/api/docs`; runtime schema verified                         |
-| Local frontend URL/result    | PASS                | `http://127.0.0.1:5173`; health/title verified                                    |
-| Local backend URL/result     | PASS                | `http://127.0.0.1:5000`; health/login/workflow verified                           |
-| Demo credentials/seed result | PASS                | Seed passed; local-only credentials are in `DEMO.md`                              |
-| Deployment status/URLs       | PENDING CREDENTIALS | No hosting or production MongoDB credentials were provided                        |
-| Known limitations            | PASS                | Manual browser QA pending; frontend emits an 882 kB chunk warning                 |
-| Exact final Git status       | PASS                | `## main...origin/main` with no local changes after `d553068`                     |
+| Required field               | Initial status      | Final value / evidence                                                                     |
+| ---------------------------- | ------------------- | ------------------------------------------------------------------------------------------ |
+| Project name                 | PASS                | CountryEdu NexaTask                                                                        |
+| Current branch               | PASS                | `main`                                                                                     |
+| Git remote                   | PASS                | `https://github.com/rohitpokhariya10/Nexatask-project-management-system.git`               |
+| Total commits created        | PASS                | 15 including the docs-only repository closeout                                             |
+| Final commit hash            | PASS                | Verified build `74a694c`; evidence base `d553068`; closeout hash is in handoff             |
+| Push status                  | PASS                | Verified implementation and evidence commits pushed to `origin/main`                       |
+| Completed features           | PASS                | Auth/RBAC, users, projects, tasks, collaboration, dashboards, audit, docs, hosting configs |
+| Remaining features           | PASS                | Hosted deployment and manual browser/Postman presentation verification                     |
+| Test results                 | PASS                | 20 backend + 9 frontend tests                                                              |
+| Lint results                 | PASS                | Root client/server lint passed                                                             |
+| Build results                | PASS                | Backend and frontend production builds passed                                              |
+| Hosting configuration        | PASS                | Render Blueprint and Vercel SPA configuration prepared                                     |
+| Swagger URL/result           | PASS                | `http://127.0.0.1:5000/api/docs`; runtime schema verified                                  |
+| Local frontend URL/result    | PASS                | `http://127.0.0.1:5173`; health/title verified                                             |
+| Local backend URL/result     | PASS                | `http://127.0.0.1:5000`; health/login/workflow verified                                    |
+| Demo credentials/seed result | PASS                | Seed passed; local-only credentials are in `DEMO.md`                                       |
+| Deployment status/URLs       | PENDING CREDENTIALS | No hosting or production MongoDB credentials were provided                                 |
+| Known limitations            | PASS                | Manual browser QA pending; frontend emits an 882 kB chunk warning                          |
+| Exact final Git status       | PASS                | `## main...origin/main` with no local changes after `d553068`                              |

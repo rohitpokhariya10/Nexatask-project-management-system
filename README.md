@@ -4,6 +4,40 @@ CountryEdu NexaTask is a full-stack project and task management system for organ
 need clear ownership, role-aware collaboration, deadline tracking, comments, attachments, audit
 history, and actionable delivery analytics.
 
+## Evaluator quick path
+
+| Resource           | Direct link                                                                                                                                                                                                                                                                           |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| GitHub repository  | [Nexatask-project-management-system](https://github.com/rohitpokhariya10/Nexatask-project-management-system)                                                                                                                                                                          |
+| Application source | [React client](https://github.com/rohitpokhariya10/Nexatask-project-management-system/tree/main/client/src) · [Express server](https://github.com/rohitpokhariya10/Nexatask-project-management-system/tree/main/server/src)                                                           |
+| Data model         | [Implemented database schema](docs/DATABASE_SCHEMA.md) · [Mermaid ER diagram](docs/ERD.md)                                                                                                                                                                                            |
+| API resources      | [API guide](docs/API.md) · [Postman collection](docs/postman/CountryEdu-NexaTask.postman_collection.json) · [raw Postman import](https://raw.githubusercontent.com/rohitpokhariya10/Nexatask-project-management-system/main/docs/postman/CountryEdu-NexaTask.postman_collection.json) |
+| Submission index   | [All deliverables and current status](docs/DELIVERABLES.md)                                                                                                                                                                                                                           |
+
+For a local evaluation, start MongoDB 7+, replace the example development JWT secret, and run:
+
+```bash
+npm install
+cp server/.env.example server/.env
+cp client/.env.example client/.env
+npm run seed
+npm run dev
+```
+
+`npm run seed` replaces all records in the configured non-production database. Use it only with a
+disposable local database. Then open:
+
+| Local target    | URL                                                                        |
+| --------------- | -------------------------------------------------------------------------- |
+| Web application | [http://localhost:5173](http://localhost:5173)                             |
+| API health      | [http://localhost:5000/api/health](http://localhost:5000/api/health)       |
+| Swagger UI      | [http://localhost:5000/api/docs](http://localhost:5000/api/docs)           |
+| OpenAPI JSON    | [http://localhost:5000/api/docs.json](http://localhost:5000/api/docs.json) |
+
+Admin login: `admin@nexatask.demo` / `Demo@12345`. The remaining seeded personas are listed in
+[Seed data and demo credentials](#seed-data-and-demo-credentials). A public deployment URL is not
+claimed; provider login is still required.
+
 ## Main features
 
 - JWT registration, login, current-user sessions, and secure bcrypt password hashing
@@ -16,7 +50,7 @@ history, and actionable delivery analytics.
 - Administrative user management and persistent audit logs
 - Responsive React dashboard with loading, empty, error, confirmation, and toast feedback
 - Swagger/OpenAPI documentation and a ready-to-import Postman collection
-- API and UI test suites, development seed data, and Docker Compose support
+- API and UI test suites, development seed data, and Render/Vercel deployment configuration
 
 ## Role permissions
 
@@ -41,7 +75,7 @@ controls only.
   Zod, Axios, Recharts, Lucide React, Sonner, Vitest, and React Testing Library
 - Server: Node.js, Express, TypeScript, MongoDB, Mongoose, Zod, JWT, bcrypt, Multer, Helmet,
   CORS, Morgan, rate limiting, Swagger, Vitest, Supertest, and MongoDB Memory Server
-- Tooling: npm workspaces, ESLint, Prettier, Docker, Docker Compose, Postman, and Mermaid
+- Tooling: npm workspaces, ESLint, Prettier, Postman, Mermaid, Render, and Vercel
 
 ## Architecture
 
@@ -70,8 +104,8 @@ countryedu-nexatask/
 ├── client/                 React/Vite frontend
 ├── server/                 Express/Mongoose API
 ├── docs/                   Architecture, API, QA, and operating guides
+├── render.yaml             Render API Blueprint
 ├── AGENTS.md               Repository contribution rules
-├── docker-compose.yml      MongoDB, API, and frontend services
 ├── package.json            Root workspace commands
 └── README.md
 ```
@@ -133,6 +167,8 @@ Server variables are documented in `server/.env.example`:
 - `NODE_ENV`, `PORT`, and `MONGODB_URI`
 - `JWT_SECRET` and `JWT_EXPIRES_IN`
 - `CLIENT_URL`, `BCRYPT_SALT_ROUNDS`, `MAX_FILE_SIZE`, and `UPLOAD_DIRECTORY`
+- `AUTO_INDEX`
+- `BOOTSTRAP_ADMIN_EMAIL` and `BOOTSTRAP_ADMIN_PASSWORD` for the first hosted Admin
 
 Client variables are documented in `client/.env.example`:
 
@@ -142,8 +178,8 @@ Client variables are documented in `client/.env.example`:
 
 Real `.env` files are ignored. Never commit production credentials.
 
-The client port and API target are configurable so manual development can run beside another local
-service or the Docker stack. `CLIENT_URL` accepts a comma-separated explicit origin list; keep it
+The client port and API target are configurable for local development. `CLIENT_URL` accepts a
+comma-separated explicit origin list; keep it
 aligned with the browser URL, including whether it uses `localhost` or `127.0.0.1`.
 
 ## Seed data and demo credentials
@@ -160,26 +196,12 @@ only:
 | Team Member     | `member2@nexatask.demo` | `Demo@12345` |
 | Team Member     | `member3@nexatask.demo` | `Demo@12345` |
 
-## Docker
+## Hosting
 
-Docker Compose is intended for local demonstration. Generate a strong `JWT_SECRET`, then build and
-run MongoDB, the API, and the web client:
-
-```bash
-export JWT_SECRET="$(openssl rand -base64 32)"
-docker compose up --build -d
-docker compose --profile tools run --rm seed
-```
-
-Service health checks and persisted MongoDB/upload volumes are defined in `docker-compose.yml`.
-Open `http://localhost:5173` after the containers become healthy. To inspect or stop the stack:
-
-```bash
-docker compose ps
-docker compose down
-```
-
-See [Deployment](docs/DEPLOYMENT.md) for production considerations.
+The supported deployment is a Render web service for the Express API, Vercel for the React/Vite
+client, and MongoDB Atlas for data. The repository contains a Render Blueprint at `render.yaml` and
+Vercel project configuration at `client/vercel.json`. Follow the exact environment, first-Admin,
+CORS, and attachment-persistence steps in [Deployment](docs/DEPLOYMENT.md).
 
 ## Testing
 
@@ -190,8 +212,26 @@ npm run build
 ```
 
 Server integration tests use MongoDB Memory Server, never a production database. Client tests run
-with Vitest, jsdom, and React Testing Library. See [Testing](docs/TESTING.md) and the truthful
-[Final QA record](docs/FINAL_QA.md).
+with Vitest, jsdom, and React Testing Library. See the [testing guide](docs/TESTING.md) for scope and
+commands and [Final QA](docs/FINAL_QA.md) for recorded run evidence. Re-run the commands above when
+evaluating the current checkout.
+
+## Screenshots
+
+The responsive application screens are available from the local seeded demo rather than represented
+by generated mockups. Start the stack, sign in with a demo persona, and open these reproducible
+views:
+
+| Screen                  | Local route                              |
+| ----------------------- | ---------------------------------------- |
+| Dashboard and analytics | `http://localhost:5173/dashboard`        |
+| Project workspace       | `http://localhost:5173/projects`         |
+| Personal task queue     | `http://localhost:5173/tasks`            |
+| Admin user management   | `http://localhost:5173/admin/users`      |
+| Admin audit history     | `http://localhost:5173/admin/audit-logs` |
+
+The repository documents reproducible screens instead of bundling stale captures from a different
+build. The routes above render the implemented application after the documented seed command.
 
 ## API summary
 
@@ -203,19 +243,15 @@ The REST API is rooted at `/api` and includes:
 - `/docs` Swagger UI and `/health` service health
 
 Responses use a consistent `success`, `message`, `data`, `errors`, and optional `pagination`
-structure. Full endpoint details are in [API guide](docs/API.md). Import
-`docs/postman/CountryEdu-NexaTask.postman_collection.json` for an executable request collection.
-
-## Screenshots
-
-Screenshots will be added after a hosted deployment is available and visually verified.
+structure. Full endpoint details are in the [API guide](docs/API.md). Import the
+[Postman collection](docs/postman/CountryEdu-NexaTask.postman_collection.json) or use its
+[raw import URL](https://raw.githubusercontent.com/rohitpokhariya10/Nexatask-project-management-system/main/docs/postman/CountryEdu-NexaTask.postman_collection.json).
 
 ## Deployment
 
-The documented target is a static host such as Vercel or Netlify for the client, a Node-compatible
-host such as Render or Railway for the server, and MongoDB Atlas. Hosted build, SPA rewrites, CORS,
-and runtime health must be verified with deployment credentials before calling it deployed. Follow
-[Deployment](docs/DEPLOYMENT.md).
+The repository contains deployment-ready Render API and Vercel client configuration plus exact
+setup guidance in [Deployment](docs/DEPLOYMENT.md). A public deployment has not been created because
+provider login is unavailable; no public frontend or API URL is claimed.
 
 ## Security note
 
@@ -230,7 +266,7 @@ Security Policy.
 - Attachments use server-local disk storage; horizontally scaled production deployments need
   object storage.
 - JWT refresh-token rotation and account password recovery are not included.
-- Hosted deployment and cross-origin production verification remain pending credentials.
+- Public deployment and cross-origin production verification are blocked pending provider login.
 - Email notifications and real-time collaboration are outside this hackathon scope.
 
 ## Future improvements
@@ -243,8 +279,10 @@ Security Policy.
 
 ## Additional documentation
 
-- [Implementation checklist](docs/CHECKLIST.md)
+- [Original requirement checklist (archived baseline)](docs/CHECKLIST.md)
+- [Deliverables index](docs/DELIVERABLES.md)
 - [Architecture](docs/ARCHITECTURE.md)
+- [Implemented database schema](docs/DATABASE_SCHEMA.md)
 - [Database ERD](docs/ERD.md)
 - [API guide](docs/API.md)
 - [Testing guide](docs/TESTING.md)

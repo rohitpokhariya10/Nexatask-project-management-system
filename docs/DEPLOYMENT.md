@@ -1,134 +1,157 @@
-# CountryEdu NexaTask deployment guide
+# Deploy CountryEdu NexaTask with Render and Vercel
 
-## Deployment status
+The supported hosting layout is:
 
-**PENDING CREDENTIALS / NOT DEPLOYED BY THIS DOCUMENTATION TRACK.** No hosted URL, Docker result, health check, CORS check, login, database connection, or upload persistence has been verified here. Record real results only after execution.
-
-## Environment contract
-
-### Server
-
-| Variable             | Required | Example (non-secret)             | Purpose                                                            |
-| -------------------- | -------- | -------------------------------- | ------------------------------------------------------------------ |
-| `NODE_ENV`           | Yes      | `production`                     | Runtime behavior and safe error policy                             |
-| `PORT`               | Yes      | `5000`                           | API listen port; honor platform-injected port                      |
-| `MONGODB_URI`        | Yes      | `mongodb://mongo:27017/nexatask` | MongoDB connection; use a secret in hosted environments            |
-| `JWT_SECRET`         | Yes      | Do not document a real value     | Strong signing secret                                              |
-| `JWT_EXPIRES_IN`     | Yes      | `1d`                             | Access-token lifetime                                              |
-| `CLIENT_URL`         | Yes      | `https://app.example.com`        | Explicit CORS origin; support a validated list only if implemented |
-| `BCRYPT_SALT_ROUNDS` | Yes      | `12`                             | Password hash cost, parsed/validated as an integer                 |
-| `MAX_FILE_SIZE`      | Yes      | `5242880`                        | Maximum upload bytes                                               |
-| `UPLOAD_DIRECTORY`   | Yes      | `/data/uploads`                  | Writable storage path outside source code                          |
-
-### Client
-
-| Variable            | Required | Example                       | Purpose                                |
-| ------------------- | -------- | ----------------------------- | -------------------------------------- |
-| `VITE_API_BASE_URL` | Yes      | `https://api.example.com/api` | API base compiled into the Vite bundle |
-
-Use committed `.env.example` files for names/examples only. Store real secrets in the hosting provider's encrypted settings. Never expose `JWT_SECRET` or `MONGODB_URI` through a `VITE_` variable; Vite variables are public in the browser bundle.
-
-## Local non-container run
-
-Prerequisites: supported Node/npm versions and a reachable development MongoDB.
-
-```bash
-npm install
-npm run seed
-npm run dev
+```text
+Vercel (React/Vite) -> Render (Express API) -> MongoDB Atlas
 ```
 
-Create local `.env` files from the examples first and provide development-only values. Expected targets are client `http://localhost:5173`, API `http://localhost:5000`, health `http://localhost:5000/api/health`, and Swagger `http://localhost:5000/api/docs`; confirm actual ports from configuration. These URLs are targets, not verified results.
+The repository includes [`render.yaml`](../render.yaml) for the API and
+[`client/vercel.json`](../client/vercel.json) for the SPA. A public deployment URL is not claimed
+until the provider deployments have actually completed.
 
-## Docker Compose
+## 1. Create the MongoDB Atlas database
 
-The target Compose topology contains:
+1. Create an Atlas cluster and a dedicated database user.
+2. Allow network access from the Render service. If a broad temporary rule is used for a
+   hackathon, use a strong database password and restrict the rule afterward.
+3. Copy the SRV URI and include the database name, for example
+   `mongodb+srv://<user>:<password>@<cluster>/nexatask?...`.
+4. Do **not** run `npm run seed` against this production database. The seed command replaces data.
 
-- `mongo`: durable named volume, internal network, health check.
-- `server`: built from `server/Dockerfile`, receives server environment, waits for Mongo readiness, exposes the API, and mounts a development/local upload volume.
-- `client`: built from `client/Dockerfile`, receives the correct build-time API URL and serves the production Vite output or documented dev mode.
+## 2. Deploy the API on Render
 
-Run:
+1. Push this repository to GitHub.
+2. In Render, choose **New > Blueprint** and select the repository.
+3. Render reads the root `render.yaml`; approve the `countryedu-nexatask-api` web service.
+4. Enter the prompted secret values:
+
+   | Variable                   | Value                                                   |
+   | -------------------------- | ------------------------------------------------------- |
+   | `MONGODB_URI`              | Atlas SRV connection string                             |
+   | `CLIENT_URL`               | Temporary frontend origin, then the final Vercel origin |
+   | `BOOTSTRAP_ADMIN_EMAIL`    | Email for the first Admin                               |
+   | `BOOTSTRAP_ADMIN_PASSWORD` | Strong password with at least 8 characters              |
+
+   `JWT_SECRET` is generated by Render. The remaining safe defaults come from `render.yaml`.
+
+5. Deploy. The blueprint runs these repository commands:
+
+   ```bash
+   npm ci && npm run build --workspace server
+   npm run start --workspace server
+   ```
+
+6. Its first successful deployment runs the one-time Admin bootstrap hook. It creates an Admin
+   only when the database has no Admin; it never resets an existing password.
+7. Copy the Render service URL and verify:
+
+   ```text
+   https://<render-service>.onrender.com/api/health
+   https://<render-service>.onrender.com/api/docs
+   ```
+
+Render supplies `PORT`; do not add a hard-coded production port. The API already listens on
+`0.0.0.0` and uses the injected port.
+
+### Render environment contract
+
+| Variable                   | Required     | Notes                                                        |
+| -------------------------- | ------------ | ------------------------------------------------------------ |
+| `NODE_ENV`                 | Yes          | `production` in the blueprint                                |
+| `MONGODB_URI`              | Yes, secret  | Atlas connection string                                      |
+| `JWT_SECRET`               | Yes, secret  | Generated by Render; rotating it signs out existing sessions |
+| `JWT_EXPIRES_IN`           | Yes          | Blueprint default: `8h`                                      |
+| `CLIENT_URL`               | Yes          | Comma-separated exact browser origins; never include `/api`  |
+| `BCRYPT_SALT_ROUNDS`       | Yes          | Blueprint default: `12`                                      |
+| `MAX_FILE_SIZE`            | Yes          | Blueprint default: 5 MiB                                     |
+| `UPLOAD_DIRECTORY`         | Yes          | Blueprint default: `server/uploads`                          |
+| `AUTO_INDEX`               | No           | Enabled for the hackathon deployment                         |
+| `BOOTSTRAP_ADMIN_EMAIL`    | First deploy | Used by the one-time bootstrap hook                          |
+| `BOOTSTRAP_ADMIN_PASSWORD` | First deploy | Keep only in Render secrets                                  |
+
+### Attachment persistence on Render
+
+The default free Render filesystem is ephemeral. Uploads can disappear after a restart, spin-down,
+or redeploy even though their MongoDB metadata remains. This limitation does not affect the other
+features.
+
+For durable attachments, upgrade the API service and attach a persistent disk at
+`/opt/render/project/src/server/uploads`. Then change `UPLOAD_DIRECTORY` to that absolute path.
+Render disks attach to one service instance, so use a single instance or replace local files with
+object storage before scaling horizontally.
+
+## 3. Deploy the client on Vercel
+
+1. In Vercel, import the same GitHub repository as a new project.
+2. Set **Root Directory** to `client`.
+3. Confirm **Framework Preset** is Vite. The committed `client/vercel.json` sets the production
+   build, `dist` output, and SPA fallback for routes such as `/dashboard`.
+4. Add these environment variables for Production and Preview:
+
+   | Variable                | Value                                       |
+   | ----------------------- | ------------------------------------------- |
+   | `VITE_API_BASE_URL`     | `https://<render-service>.onrender.com/api` |
+   | `VITE_MAX_UPLOAD_BYTES` | `5242880`                                   |
+
+5. Deploy and copy the production URL, for example `https://<project>.vercel.app`.
+6. In Render, set `CLIENT_URL` to that exact origin (no trailing path) and redeploy the API.
+7. Redeploy Vercel whenever `VITE_API_BASE_URL` changes because Vite embeds it during the build.
+
+Production CORS intentionally accepts only configured origins. Dynamic Vercel preview domains will
+not work automatically; add an exact preview origin to the comma-separated `CLIENT_URL` only when
+that preview needs API access.
+
+## 4. Create or recover the first Admin
+
+The Blueprint bootstrap is the normal first-deploy path. To run it manually from a Render Shell
+after the server build:
 
 ```bash
-export JWT_SECRET="$(openssl rand -base64 32)"
-docker compose up --build -d
-docker compose --profile tools run --rm seed
+npm run bootstrap:admin --workspace server
 ```
 
-Then verify health, Swagger, all three logins, upload persistence across a server-container restart, and graceful shutdown. `depends_on` startup order alone does not prove MongoDB readiness; this Compose stack uses health checks and retry-safe database connection logic.
+It reads `BOOTSTRAP_ADMIN_EMAIL` and `BOOTSTRAP_ADMIN_PASSWORD`. After login, the Admin can create
+or promote Project Managers and Team Members from **Admin > Users**. Public registration always
+creates a Team Member and cannot create privileged accounts.
 
-## Hosted deployment reference path
+## 5. Post-deployment checks
 
-### 1. MongoDB Atlas
+- Render `/api/health` returns `200` with database state `connected`.
+- Swagger loads at `/api/docs` without exposing secrets.
+- The Vercel login page calls the HTTPS Render URL, not localhost.
+- Admin login succeeds; Admin can create a Project Manager and Team Member.
+- Project creation, manager/member assignment, task workflow, comments, and dashboards work.
+- A Team Member receives `403` for Admin-only routes.
+- Refreshing a Vercel deep route such as `/projects` returns the application.
+- Browser CORS accepts the production Vercel origin and rejects an unrelated origin.
+- The attachment limitation is accepted, or a Render disk is mounted and restart-tested.
 
-1. Create a dedicated project/cluster and least-privilege application database user.
-2. Configure network access for the backend host; do not open broader CIDRs than necessary.
-3. Copy the SRV connection string into the backend secret `MONGODB_URI`.
-4. Set retry/timeouts appropriate to the platform and verify the target database name.
-5. Do not use production data for tests or seed the production database with demo credentials.
+## Troubleshooting
 
-### 2. Backend on Render/Railway/a Node host
+### Register or login shows `Network Error`
 
-1. Select the repository and server/root build context consistent with the monorepo scripts.
-2. Install from the lockfile and run the server production build.
-3. Start the compiled server using the actual package script; do not use a development watcher.
-4. Configure all server variables above and use the platform-provided `PORT` when present.
-5. Set health check path to `/api/health` only after confirming it returns readiness without secrets.
-6. Configure `CLIENT_URL` with the final HTTPS frontend origin, including no accidental path/wildcard mismatch.
-7. Review logs for redaction and confirm shutdown/redeploy closes connections cleanly.
+- Confirm `VITE_API_BASE_URL` ends in `/api` exactly once.
+- Confirm Render is awake and `/api/health` works.
+- Set `CLIENT_URL` to the exact Vercel origin, without a route or wildcard, then redeploy Render.
+- After changing a `VITE_` variable, redeploy Vercel.
 
-### 3. Attachment persistence decision
+### Render starts but reports database disconnected
 
-Many application hosts provide ephemeral filesystems. Local Multer storage on such a host can disappear on restart/redeploy and will not work consistently across multiple instances.
+- Check the Atlas username, escaped password, database name, and network access rule.
+- Confirm `MONGODB_URI` is stored only in Render and starts with `mongodb://` or `mongodb+srv://`.
+- Read the Render logs; the API intentionally exits when its initial database connection fails.
 
-Before production deployment, choose one:
+### Admin credentials do not work
 
-- mount a durable provider volume at `UPLOAD_DIRECTORY` and keep the service single-region/compatible with that volume; or
-- replace the local storage adapter with object storage, retain server-side type/size checks, and store only safe object metadata/URLs in MongoDB.
+- Confirm the one-time hook completed in Render events/logs.
+- If an Admin already exists, the hook safely skips creation; use that account or update the role
+  directly in the controlled Atlas database.
+- Never run the destructive demo seed against the hosted database.
 
-Do not claim attachment durability until restart/redeploy tests prove it. Never serve the entire source tree or accept a client-provided storage path.
+## Release status
 
-### 4. Frontend on Vercel/Netlify
-
-1. Use the `client` build context or the root workspace command that builds the client.
-2. Set `VITE_API_BASE_URL` to the final HTTPS API URL including `/api` exactly once.
-3. Configure SPA rewrites so deep routes return `index.html`, while static assets remain cacheable.
-4. Deploy, then add the exact frontend origin to backend CORS configuration and redeploy the API if needed.
-5. Verify login refresh/logout, protected deep links, API errors, charts, and mobile navigation.
-
-## Production verification
-
-All rows start unverified.
-
-| Check                                                                     | Initial status      | Evidence to record                 |
-| ------------------------------------------------------------------------- | ------------------- | ---------------------------------- |
-| Atlas connects over TLS with least-privilege credentials                  | PENDING CREDENTIALS | Provider/health timestamp, no URI  |
-| Backend build and start command succeed                                   | NOT TESTED          | Build logs and release ID          |
-| `/api/health` is healthy and contains no sensitive data                   | NOT TESTED          | Status/body excerpt                |
-| `/api/docs` loads over HTTPS                                              | NOT TESTED          | URL/screenshot                     |
-| Frontend production build and SPA rewrites work                           | NOT TESTED          | Build log and deep-link URL        |
-| Browser calls the intended API URL without mixed content                  | NOT TESTED          | Network evidence                   |
-| CORS permits only intended origins/methods/headers                        | NOT TESTED          | Allowed and rejected-origin checks |
-| Register/login/me work; inactive login is rejected                        | NOT TESTED          | Safe request IDs/results           |
-| All three role scopes and representative `403` behavior work              | NOT TESTED          | Endpoint matrix evidence           |
-| Seed/demo data is absent from production unless explicitly intended       | NOT TESTED          | Database/release check             |
-| Upload allowlist/size/path protections work                               | NOT TESTED          | Sanitized test results             |
-| Attachment survives restart/redeploy or limitation is explicitly accepted | NOT TESTED          | Persistence result                 |
-| Logs redact passwords, Authorization/JWT, secrets, and filesystem paths   | NOT TESTED          | Redacted log review                |
-| Dashboard data is role-scoped and matches known records                   | NOT TESTED          | Count comparison                   |
-| Audit records are safe and Admin-only                                     | NOT TESTED          | Access and content checks          |
-
-## Rollback and operations
-
-- Keep deploys immutable and identify the last healthy release.
-- Roll back application code through the hosting provider or a normal Git revert; do not rewrite shared history.
-- Schema changes should remain backward-compatible for at least one deploy. This design uses Mongoose documents rather than a migration framework, so model/default changes need an explicit data backfill plan when required.
-- Back up MongoDB before destructive data changes and verify restore procedures outside production first.
-- Rotating `JWT_SECRET` invalidates existing access tokens; schedule and communicate that effect.
-- Rotate a suspected database credential immediately and review access logs without publishing the secret.
-- Monitor health, error rate, response latency, MongoDB connection saturation, disk/object-storage usage, and rate-limit anomalies.
-
-## Release gate
-
-Deployment is not complete until the clean install, lint, tests, client/server builds, local integration, Docker (where possible), hosted health, login, CORS, role authorization, uploads, Swagger, and mandatory demo flow have evidence in [FINAL_QA.md](./FINAL_QA.md). Missing provider access remains `PENDING CREDENTIALS`; it must never be reported as a successful deployment.
+Local lint, tests, and production builds can be verified without provider access. Hosted health,
+CORS, authentication, and public URLs remain pending until the GitHub repository is imported into
+Render and Vercel. Record the final URLs and evidence in [`FINAL_QA.md`](./FINAL_QA.md) instead of
+claiming an undeployed service.

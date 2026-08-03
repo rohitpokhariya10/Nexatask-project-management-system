@@ -2,7 +2,9 @@
 
 ## Document status
 
-This document defines the intended architecture for the TypeScript MERN implementation. It is not proof that a component is implemented or verified. Track implementation in [CHECKLIST.md](./CHECKLIST.md) and executed checks in [FINAL_QA.md](./FINAL_QA.md).
+This document explains the implemented TypeScript MERN architecture and its deliberate hackathon
+trade-offs. The executable source remains authoritative; executed verification is recorded in
+[FINAL_QA.md](./FINAL_QA.md).
 
 ## System context
 
@@ -19,7 +21,9 @@ flowchart LR
     A -->|redacted diagnostics| L[Application logs]
 ```
 
-For local Docker development, MongoDB, server, and client run as separate Compose services. In a hosted environment, the client may run on Vercel/Netlify, the API on a Node-compatible platform, and MongoDB on Atlas. A hosted API must not rely on ephemeral local disk for durable attachments.
+For local development, MongoDB runs locally while the client and server run through the root npm
+workspace. The supported hosted layout is the client on Vercel, the API on Render, and MongoDB on
+Atlas. Render's free ephemeral filesystem must not be treated as durable attachment storage.
 
 ## Monorepo boundaries
 
@@ -27,26 +31,33 @@ For local Docker development, MongoDB, server, and client run as separate Compos
 countryedu-nexatask/
 ├── client/                 React application
 │   └── src/
-│       ├── app/            providers and application configuration
-│       ├── components/     shared UI, forms, and layout pieces
-│       ├── features/       feature-oriented UI and query logic
+│       ├── components/     shared UI and authenticated layout pieces
+│       │   ├── common/
+│       │   └── layout/
+│       ├── features/
+│       │   └── auth/       authentication context and form schemas
 │       ├── hooks/          reusable client hooks
-│       ├── layouts/        authenticated/public page shells
-│       ├── lib/            Axios, Query Client, formatting utilities
-│       ├── pages/          route-level screens
+│       ├── lib/            Axios and formatting/access utilities
+│       ├── pages/          auth, dashboard, project, task, admin, and system screens
 │       ├── routes/         route definitions and guards
-│       ├── services/       typed API calls
-│       └── types/          shared client-side contracts
+│       ├── test/           shared Vitest render/setup utilities
+│       ├── types/          shared client-side contracts
+│       ├── App.tsx         route composition
+│       ├── index.css       Tailwind layers and shared styles
+│       └── main.tsx        browser entry point
 ├── server/
 │   └── src/
 │       ├── config/         validated environment and database setup
-│       ├── middleware/     auth, authorization, validation, errors, uploads
+│       ├── middleware/     authentication, validation, and error handling
 │       ├── modules/        auth/users/projects/tasks/comments/etc.
+│       ├── scripts/        development seed entry point
 │       ├── shared/         small cross-module helpers and types
+│       ├── tests/          isolated integration suites
+│       ├── types/          Express type augmentation
 │       ├── app.ts          Express composition without listening
 │       └── server.ts       startup, database connection, and shutdown
 ├── docs/                   architecture and operating guides
-├── docker-compose.yml
+├── render.yaml             Render API Blueprint
 └── package.json            workspace orchestration scripts
 ```
 
@@ -233,7 +244,9 @@ Expected status classes are `200` for reads/updates, `201` for creation, a consi
 
 ## Operational design
 
-The API should expose a health/readiness endpoint that checks MongoDB without revealing the connection string. On shutdown it stops accepting traffic, closes the HTTP server, and disconnects Mongoose. Container health checks use this endpoint.
+The API exposes a health/readiness endpoint that checks MongoDB without revealing the connection
+string. On shutdown it stops accepting traffic, closes the HTTP server, and disconnects Mongoose.
+Render uses this endpoint for service health checks.
 
 Local logs may be human-readable; production logs should remain structured enough for a hosting provider to search, but must not include passwords, JWTs, or uploaded file paths. Local upload storage requires a mounted volume. Stateless horizontal API scaling requires shared object storage and a durable attachment URL strategy.
 
@@ -242,7 +255,7 @@ Local logs may be human-readable; production logs should remain structured enoug
 - One deployable client and one deployable API keep operations understandable.
 - REST and explicit services avoid unnecessary event buses and command frameworks.
 - JWT in browser storage is acceptable only as a documented hackathon trade-off.
-- Local disk uploads are suitable for local Docker/demo use, not inherently durable on serverless or ephemeral hosts.
+- Local disk uploads are suitable for local demos, not inherently durable on ephemeral hosts.
 - Audit entries are application-level records, not a tamper-proof compliance ledger.
 - Search uses bounded, escaped database queries; a dedicated search service is unnecessary at this scale.
 

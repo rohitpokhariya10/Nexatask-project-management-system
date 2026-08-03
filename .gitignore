@@ -66,8 +66,8 @@ __pycache__/
 venv/
 .venv/
 
-# Docker overrides
-docker-compose.override.yml
+# Hosting CLI state
+.vercel/
 
 # Security and credentials
 *.pem

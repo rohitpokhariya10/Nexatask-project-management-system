@@ -1,6 +1,8 @@
 # CountryEdu NexaTask implementation checklist
 
-This is the working implementation ledger for the hackathon build. It is intentionally conservative: at the time this checklist was created, no application behavior, test result, build, Docker workflow, deployment, or Git operation had been verified by this document's author.
+This file preserves the original pre-implementation requirement inventory, so its row statuses are
+an archived baseline rather than the current project state. Use the executed
+[final QA record](./FINAL_QA.md) and [deliverables index](./DELIVERABLES.md) for current evidence.
 
 ## Status rules
 
@@ -12,7 +14,7 @@ This is the working implementation ledger for the hackathon build. It is intenti
 - Record commands, test names, screenshots, commits, or URLs in the Evidence column before changing a row to `DONE`.
 - Final end-to-end results belong in [FINAL_QA.md](./FINAL_QA.md), whose status vocabulary is deliberately stricter.
 
-Initial state: all application work is `PENDING`.
+Archived initial state: all application work was `PENDING` before implementation began.
 
 ## 1. Repository and tooling
 
@@ -183,31 +185,30 @@ Detailed cases and commands are in [TESTING.md](./TESTING.md).
 | Postman login script stores a returned JWT in `accessToken`                                                               | PENDING | Static JSON only; runtime not tested   |
 | Mandatory connected 20-step demo flow succeeds                                                                            | PENDING | See [DEMO.md](./DEMO.md)               |
 
-## 11. Docker and deployment
+## 11. Render and Vercel deployment
 
 | Requirement                                                                                | Status  | Evidence / notes                     |
 | ------------------------------------------------------------------------------------------ | ------- | ------------------------------------ |
-| Client and server Dockerfiles use production-appropriate builds                            | PENDING | —                                    |
-| Both `.dockerignore` files exclude dependencies, secrets, logs, and local build output     | PENDING | —                                    |
-| Compose starts MongoDB, server, and client with matching environment and networking        | PENDING | —                                    |
-| Practical health checks and dependency readiness are configured                            | PENDING | —                                    |
-| `docker compose up --build` succeeds from a clean checkout                                 | PENDING | —                                    |
+| Render Blueprint builds and starts the server from the root workspace                      | PENDING | `render.yaml`                        |
+| Render health check, Atlas secrets, and first-Admin bootstrap are configured               | PENDING | `render.yaml`                        |
+| Vercel uses `client` as root with a Vite build and SPA fallback                            | PENDING | `client/vercel.json`                 |
 | Atlas/database, backend, and frontend deployment configuration is prepared                 | PENDING | —                                    |
 | Production CORS, frontend API URL, secrets, persistence, and health behavior are verified  | PENDING | —                                    |
+| Ephemeral attachment limitations or a persistent Render disk are documented                | PENDING | See [DEPLOYMENT.md](./DEPLOYMENT.md) |
 | Real deployment URLs and credential-backed verification are recorded only after deployment | PENDING | See [DEPLOYMENT.md](./DEPLOYMENT.md) |
 
 ## 12. Documentation and final acceptance
 
-| Requirement                                                                                                             | Status  | Evidence / notes                                       |
-| ----------------------------------------------------------------------------------------------------------------------- | ------- | ------------------------------------------------------ |
-| README matches the actual scripts, structure, environment, routes, limitations, and results                             | PENDING | Root README is outside this documentation track        |
-| Architecture guide matches the implemented client/server boundaries                                                     | PENDING | Draft target: [ARCHITECTURE.md](./ARCHITECTURE.md)     |
-| ER diagram and index list match actual Mongoose schemas                                                                 | PENDING | Draft target: [ERD.md](./ERD.md)                       |
-| API guide matches implemented OpenAPI and behavior                                                                      | PENDING | Draft target: [API.md](./API.md)                       |
-| Testing guide reflects real commands and results                                                                        | PENDING | Draft target: [TESTING.md](./TESTING.md)               |
-| Deployment and demo guides are exercised rather than assumed                                                            | PENDING | [DEPLOYMENT.md](./DEPLOYMENT.md), [DEMO.md](./DEMO.md) |
-| Every item in `FINAL_QA.md` has evidence and no item remains `NOT TESTED`                                               | PENDING | [FINAL_QA.md](./FINAL_QA.md)                           |
-| Final report includes exact Git, test, lint, build, Docker, URL, credential, deployment, limitation, and worktree facts | PENDING | —                                                      |
+| Requirement                                                                                                     | Status  | Evidence / notes                                       |
+| --------------------------------------------------------------------------------------------------------------- | ------- | ------------------------------------------------------ |
+| README matches the actual scripts, structure, environment, routes, limitations, and results                     | PENDING | Root README is outside this documentation track        |
+| Architecture guide matches the implemented client/server boundaries                                             | PENDING | Draft target: [ARCHITECTURE.md](./ARCHITECTURE.md)     |
+| ER diagram and index list match actual Mongoose schemas                                                         | PENDING | Draft target: [ERD.md](./ERD.md)                       |
+| API guide matches implemented OpenAPI and behavior                                                              | PENDING | Draft target: [API.md](./API.md)                       |
+| Testing guide reflects real commands and results                                                                | PENDING | Draft target: [TESTING.md](./TESTING.md)               |
+| Deployment and demo guides are exercised rather than assumed                                                    | PENDING | [DEPLOYMENT.md](./DEPLOYMENT.md), [DEMO.md](./DEMO.md) |
+| Every item in `FINAL_QA.md` has evidence and no item remains `NOT TESTED`                                       | PENDING | [FINAL_QA.md](./FINAL_QA.md)                           |
+| Final report includes exact Git, test, lint, build, URL, credential, deployment, limitation, and worktree facts | PENDING | —                                                      |
 
 ## Per-feature definition of done
 

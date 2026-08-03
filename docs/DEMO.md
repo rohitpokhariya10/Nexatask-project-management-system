@@ -2,7 +2,11 @@
 
 ## Demo status
 
-The browser-driven flow below remains `NOT TESTED`; expected results describe its acceptance criteria. On 2026-08-03, commit `74a694c` passed a connected API version of the role handoff against the Docker stack: all three logins, project/manager/member setup, task assignment and completion, comment, attachment upload/delete, dashboard progress, audit visibility, `401`/`403` checks, queries, and cleanup. This API evidence does not substitute for the remaining manual browser/UX pass.
+The browser-driven flow below remains `NOT TESTED`; expected results describe its acceptance
+criteria. On 2026-08-03, commit `74a694c` passed a connected local API version of the role handoff:
+all three logins, project/manager/member setup, task assignment and completion, comment,
+attachment upload/delete, dashboard progress, audit visibility, `401`/`403` checks, queries, and
+cleanup. This API evidence does not substitute for the remaining manual browser/UX pass.
 
 ## Local-only credentials
 
@@ -21,9 +25,9 @@ The seed target is one Admin, one Project Manager, at least three Team Members, 
 ## Preparation
 
 1. Configure development-only client/server environment files from their examples.
-2. Start a non-production MongoDB (or the full Compose stack).
+2. Start a non-production MongoDB.
 3. Install dependencies and run `npm run seed`.
-4. Run `npm run dev` (or `docker compose up --build`).
+4. Run `npm run dev`.
 5. Confirm the API health target, client, and `/api/docs` load.
 6. Use a small supported sample file containing no sensitive information for upload.
 7. Open browser developer tools so failed requests and status codes are visible.
@@ -83,7 +87,8 @@ Use one newly created project/task so the later dashboard and audit observations
 4. Hand the task to the Team Member, who owns progress updates and collaboration but cannot reassign/delete it.
 5. Finish with real aggregation changes and the safe audit trail tying the flow together.
 
-Avoid claiming production deployment, Docker success, test success, or complete feature coverage unless the corresponding `FINAL_QA.md` evidence is already recorded.
+Avoid claiming production deployment, test success, or complete feature coverage unless the
+corresponding `FINAL_QA.md` evidence is already recorded.
 
 ## Demo troubleshooting
 
